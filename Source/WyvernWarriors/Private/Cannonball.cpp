@@ -3,7 +3,6 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameManagers/GameModeLevel.h"
 #include "Components/SphereComponent.h"
-#include "GameManagers/Components/EventBusComponent.h"
 
 // Sets default values for this actor's properties
 ACannonball::ACannonball()
