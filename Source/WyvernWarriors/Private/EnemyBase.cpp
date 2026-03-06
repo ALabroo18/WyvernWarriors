@@ -1,0 +1,97 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "EnemyBase.h"
+#include "Kismet/GameplayStatics.h"
+#include "Components/SplineComponent.h"
+#include "EnemyPatrolRoute.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
+#include "Math/Quat.h"
+
+// Sets default values
+AEnemyBase::AEnemyBase()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	// Create and configure capsule component
+	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComponent"));
+	RootComponent = CapsuleComponent;
+
+	// Create and configure skeletal mesh
+	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
+	SkeletalMesh->SetupAttachment(RootComponent);
+
+	// Create and configure floating movement component
+	FloatingPawnMovement = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("FloatingPawnMovement"));
+	FloatingPawnMovement->UpdatedComponent = RootComponent;
+}
+
+// Sets enemy variables when spawning 
+void AEnemyBase::SetVariables()
+{
+	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
+	CurrentHealth = MaxHealth; // Set current health to maximum health
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed; // Set movement speed to max
+}
+
+// Moves the enemy along the spline path
+void AEnemyBase::MoveAlongSpline(float DeltaTime)
+{
+	// If no spline component, don't move
+	if (!IsValid(SplineComponent))
+	{
+		return;
+	}
+	
+	DistanceAlongSpline += GetVelocity().Size()	 * DeltaTime; // Update distance along spline based on movement speed
+	
+	FRotator SplineRotation = SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new rotation on spline
+	RotateAndMove(SplineRotation, DeltaTime);
+	
+	// Reset distance if end of spline reached
+	if (DistanceAlongSpline >= SplineComponent->GetSplineLength())
+	{
+		DistanceAlongSpline = 0.f;
+	}
+}
+
+// Initializes the enemy on the patrol route at a specific distance
+void AEnemyBase::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
+{
+	PatrolRoute = Route; // Assign the patrol route
+	SplineComponent = PatrolRoute->GetSplineComponent(); // Get the spline component from the patrol route
+	DistanceAlongSpline = InitialDistance; // Set the initial distance along the route
+}
+
+// Modifies the enemy's health by a specified amount
+void AEnemyBase::ModifyCurrentHealth(float const Amount)
+{
+	CurrentHealth = FMath::Clamp(CurrentHealth + Amount, 0.f, MaxHealth); // Adjust health and clamp between 0 and MaxHealth
+	
+	// Output if health was reduced to 0 or below
+	if (CurrentHealth <= 0)
+	{
+		DestroySelfEnemy();
+	}
+}
+
+// Rotates and moves the enemy with the specified rotation
+void AEnemyBase::RotateAndMove(FRotator& Rotation, const float DeltaTime)
+{
+	// Keep grunt from flying below 0
+	if (GetActorLocation().Z < .0f && Rotation.Pitch < .0f)
+    {
+    	Rotation.Pitch *= -1.f;
+    }
+
+	const FQuat DesiredQuat = Rotation.Quaternion(); // Convert rotation to quaternion
+	const FQuat NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); // Set next quaternion
+	SetActorRotation(NextRotation); // Rotate enemy to next quaternion
+	
+	const float RotationDifference = GetActorQuat().AngularDistance(DesiredQuat); // Get difference between current and next quaternions
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference)); // Set movement speed based on rotation difference
+	
+	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true); // Move the enemy forward
+}
