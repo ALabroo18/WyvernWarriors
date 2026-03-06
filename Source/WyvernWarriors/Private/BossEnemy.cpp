@@ -1,6 +1,6 @@
 #include "BossEnemy.h"
-#include "GameModeLevel.h"
-#include "WaveManagerComponent.h"
+#include "GameManagers/GameModeLevel.h"
+#include "GameManagers/Components/WaveManagerComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/FloatingPawnMovement.h"
