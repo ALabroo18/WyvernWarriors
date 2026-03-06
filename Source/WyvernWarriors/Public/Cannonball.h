@@ -2,30 +2,55 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h"
+#include "ActivatableInterface.h"
 #include "Cannonball.generated.h"
 
+class UEventBusComponent;
 class UStaticMeshComponent;
 class UProjectileMovementComponent;
+class USphereComponent;
 
 UCLASS()
-class WYVERNWARRIORS_API ACannonball : public AActor
+class WYVERNWARRIORS_API ACannonball : public AActor, public IActivatableInterface
 {
 	GENERATED_BODY()
 public:
-	// Return's the initial speed of the projectile
-	UFUNCTION(BlueprintCallable, Category = "Health")
-	float GetProjectileSpeed() { return ProjectileMovement->InitialSpeed; }
+	// Return's the speed of the projectile
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	float GetProjectileSpeed() const;
+
+	// Sets cannonball stack as active or not
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	virtual void SetActiveness(bool const bIsActive) override;
+	
+	// Resets the cannonball to its initial location and stops its movement
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void ResetCannonball();
 	
 private:	
 	// Sets default values for this actor's properties
 	ACannonball();
 	
+	// Set initial activeness and get event bus
+	virtual void BeginPlay() override;
+	
 	// Component for mesh of the actor
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
 	UStaticMeshComponent* StaticMesh;
 	
-	//Component for the movement of the actor
+	// Component for the movement of the actor
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
 	UProjectileMovementComponent* ProjectileMovement;
+
+	// Root component that handles collision
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
+	USphereComponent* SphereComponent;
+
+	// Event bus for wyvern pickup delegate
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Delegate", meta = (AllowPrivateAccess = true));
+	UEventBusComponent* EventBus;
+	
+	// Initial location of the cannonball for resetting after use
+	UPROPERTY()
+	FVector InitialLocation;
 };
