@@ -39,7 +39,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
 	void OnNewWave(bool const bIsFinalWave);
 	
-	//
+	// Sets the starting variables for cannon management
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
 	void SetStartVariables();
 
