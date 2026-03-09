@@ -3,62 +3,98 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameManagers/GameModeLevel.h"
 #include "Components/SphereComponent.h"
+#include "GameManagers/Components/EventBusComponent.h"
 
-// Sets default values for this actor's properties
+/* Disables tick and sets up components on actor.
+ * Sets projectile to not automatically move
+ */
 ACannonball::ACannonball()
 {
-	PrimaryActorTick.bCanEverTick = false; // Does not need to tick
+	PrimaryActorTick.bCanEverTick = false; 
 	
-	// Set sphere component as root for collision
 	SphereComponent = CreateDefaultSubobject<USphereComponent>("SphereComponent");
 	SetRootComponent(SphereComponent);
 	
-	// Attach static mesh to root component
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>("StaticMesh");
 	StaticMesh->SetupAttachment(RootComponent);
 
-	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovement"); // Create projectile movement component
-	ProjectileMovement->bAutoActivate = false; // Do not activate movement at start of level
+	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovement");
+	ProjectileMovement->bAutoActivate = false;
 }
 
-// Set initial activeness and get event bus
+/* Stores initial actor location and gets event bus to use when the cannonball is picked up by the player. Adds 
+ * set pickup sphere collision function to the wyvern pickup cannonball delegate.
+ */
 void ACannonball::BeginPlay()
 {
 	Super::BeginPlay();
-	InitialLocation = GetActorLocation(); // Store initial location for resetting later
-
-	// Get game mode
+	InitialLocation = GetActorLocation();
+	
 	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode());
 	if (!IsValid(GameModeLevel))
 	{
 		return;
 	}
 
-	EventBus = GameModeLevel->GetEventBusComponent(); // Get and assign event bus
+	EventBus = GameModeLevel->GetEventBusComponent();
+	
+	EventBus->WyvernHandleCannonball.AddDynamic(this, &ACannonball::SetPickUpSphereCollision);
 }
 
-// Return's the speed of the projectile
+/* Sets collisions of input sphere to none or query online
+ * @param bIsEnabled - Whether the pickup sphere collision should be enabled or not
+ */
+void ACannonball::SetPickUpSphereCollision(bool const bIsEnabled)
+{
+	if (bIsEnabled)
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
+	else
+	{
+		SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+/* Returns the speed at which the cannonball was fired
+ * @return float - The speed at which the cannonball was fired
+ */
 float ACannonball::GetProjectileSpeed() const
 {
 	return ProjectileMovement->GetMaxSpeed();
 }
 
-// Sets cannonball properly in level
+/* Sets the activeness of the cannonball, which includes visibility, collision, and movement
+ * @param bIsActive - Whether the cannonball should be active or not
+ */
 void ACannonball::SetActiveness(bool const bIsActive)
 {
-	SetActorHiddenInGame(!bIsActive); // Set visibility
-	SetActorEnableCollision(bIsActive);  // Set collision usage
+	SetActorHiddenInGame(!bIsActive);
+	SetActorEnableCollision(bIsActive);
 	
-	// Stop movement if deactivating while moving
 	if (!bIsActive && ProjectileMovement->IsActive())
 	{
 		ProjectileMovement->StopMovementImmediately();
 	}
 }
 
-// Resets the cannonball to its initial location and stops its movement
+/* Detaches cannonball from Wyvern and turn pickup sphere collisions on. Then reset the cannonball to its initial
+ * location, and stops its movement
+ */
 void ACannonball::ResetCannonball()
 {
-	ProjectileMovement->StopMovementImmediately(); // Stop movement of the cannonball
-	SetActorLocation(InitialLocation); // Reset location to initial location
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	SetPickUpSphereCollision(true);
+	SetActorLocation(InitialLocation);
+	ProjectileMovement->StopMovementImmediately(); 
+}
+
+/* Attaches cannonball to the specified socket on the Wyvern mesh and disables pickup sphere collision
+ * @param WyvernMesh - The mesh of the Wyvern to attach the cannonball to
+ * @param AttachSocket - The socket on the Wyvern mesh to attach the cannonball to
+ */
+void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName const AttachSocket)
+{
+	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
+	SetPickUpSphereCollision(false);
 }

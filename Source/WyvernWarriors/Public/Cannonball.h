@@ -9,6 +9,7 @@ class UEventBusComponent;
 class UStaticMeshComponent;
 class UProjectileMovementComponent;
 class USphereComponent;
+class USkeletalMeshComponent;
 
 UCLASS()
 class WYVERNWARRIORS_API ACannonball : public AActor, public IActivatableInterface
@@ -27,12 +28,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void ResetCannonball();
 	
+	// Attach to Wyvern and disable pickup sphere
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName const AttachSocket);
+	
 private:	
 	// Sets default values for this actor's properties
 	ACannonball();
 	
 	// Set initial activeness and get event bus
 	virtual void BeginPlay() override;
+	
+	//
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void SetPickUpSphereCollision(bool const bIsEnabled);
 	
 	// Component for mesh of the actor
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
@@ -51,6 +60,6 @@ private:
 	UEventBusComponent* EventBus;
 	
 	// Initial location of the cannonball for resetting after use
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cannonball", meta = (AllowPrivateAccess = true))
 	FVector InitialLocation;
 };
