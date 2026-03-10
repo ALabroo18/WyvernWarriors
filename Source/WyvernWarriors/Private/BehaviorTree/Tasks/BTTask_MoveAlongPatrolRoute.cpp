@@ -19,33 +19,42 @@ void UBTTask_MoveAlongPatrolRoute::InitializeFromAsset(UBehaviorTree& Asset)
 	if (ensure(BlackboardData))
 	{
 		SelfGruntKey.ResolveSelectedKey(*BlackboardData);
+		OnPatrolRouteKey.ResolveSelectedKey(*BlackboardData);
 	}
 }
 
 // Invoked when the task is executed
 EBTNodeResult::Type UBTTask_MoveAlongPatrolRoute::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
-	// Check for blackboard component
-	UBlackboardComponent* BlackboardComponent = OwnerComp.GetBlackboardComponent();
-	if (!ensure(BlackboardComponent))
-	{
-		return EBTNodeResult::Failed;
-	}
-	
 	return EBTNodeResult::InProgress; // Task is in progress
 }
 
 
 
-// Ticks the task to update movement along the patrol route
+/* Moves the grunt enemy along the patrol route spline. Fails if the grunt isn't on the patrol route or if there is an
+ * issue with the blackboard or grunt enemy.
+ */
 void UBTTask_MoveAlongPatrolRoute::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
-	// Get grunt from blackboard key
 	AGruntEnemy* GruntEnemy = Cast<AGruntEnemy>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(SelfGruntKey.SelectedKeyName));
 	if (!IsValid(GruntEnemy))
 	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
 		return;
 	}
 	
-	GruntEnemy->MoveAlongSpline(DeltaSeconds); // Call the function to move along the spline
+	UBlackboardComponent* BlackboardComponent = OwnerComp.GetBlackboardComponent();
+	if (!ensure(BlackboardComponent))
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	if (!BlackboardComponent->GetValueAsBool(OnPatrolRouteKey.SelectedKeyName))
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
+	
+	GruntEnemy->MoveAlongSpline(DeltaSeconds);
 }

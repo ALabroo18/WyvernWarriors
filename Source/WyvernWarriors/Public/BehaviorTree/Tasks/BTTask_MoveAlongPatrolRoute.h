@@ -27,4 +27,8 @@ public:
 	// Blackboard key for the player wyvern
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector SelfGruntKey;
+	
+	// Blackboard key for whether the grunt is on the patrol route
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
+	FBlackboardKeySelector OnPatrolRouteKey;
 };
