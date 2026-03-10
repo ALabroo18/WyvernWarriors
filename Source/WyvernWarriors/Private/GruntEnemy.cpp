@@ -7,8 +7,8 @@
 #include "GameFramework/Character.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameModeLevel.h"
-#include "EnemyManagerComponent.h"
+#include "GameManagers/GameModeLevel.h"
+#include "GameManagers/Components/EnemyManagerComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
 
