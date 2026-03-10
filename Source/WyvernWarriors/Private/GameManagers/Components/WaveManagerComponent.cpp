@@ -22,7 +22,6 @@ void UWaveManagerComponent::WaveCompleted()
 	CurrentWaveNumber++;
 
 	GameStateLevel->SetCurrentWaveNumber(CurrentWaveNumber); // Update wave number in game state
-	UE_LOG(LogTemp, Log, TEXT("Wave %d completed!"), CurrentWaveNumber - 1); // Log wave completion
 	EventBus->OnWaveComplete.Broadcast(bIsFinalWave); // Trigger wave completed delegate
 	NewWave(); // Start new wave
 }
@@ -79,7 +78,7 @@ void UWaveManagerComponent::RecaptureOutposts()
 	}
 	
 	int32 const TotalOutposts = Outposts.Num();
-	UE_LOG(LogTemp, Log, TEXT("Total Outposts: %d, Player-Controlled Outposts: %d"), TotalOutposts, PlayerControlledOutposts.Num());
+
 	// If player controls less than half of outposts, recapture all
 	if (int32 const NumPlayerOutposts = PlayerControlledOutposts.Num(); NumPlayerOutposts <= TotalOutposts / 2)
 	{
@@ -104,7 +103,7 @@ void UWaveManagerComponent::RecaptureOutposts()
 	{
 		NumOutpostsToRecapture = TotalOutposts / 2 + 1; // Odd number of outposts: half rounded up
 	}
-	UE_LOG(LogTemp, Log, TEXT("Recapturing %d outposts"), NumOutpostsToRecapture);
+
 	// Randomly select outposts to recapture
 	for (int32 i = 0; i < NumOutpostsToRecapture; i++)
 	{
