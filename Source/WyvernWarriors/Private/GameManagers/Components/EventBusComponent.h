@@ -5,11 +5,12 @@
 #include "EventBusComponent.generated.h"
 
 class ACannonball;
+class ACannon;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FWyvernCanPickUpCannonball, bool, bIsInRange, ACannonball*, Cannonball = nullptr); // Delegate for wyvern being able to pick up cannonball event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNewWave, bool, bIsFinalWave); // Delegate for new wave event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWaveComplete, bool, bIsFinalWave); // Delegate for wave completion event
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCannonCanBeLoaded, bool, bCanBeLoaded); // Delegate for wave completion event
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCannonCanBeLoaded, bool, bCanBeLoaded, ACannon*, CannonToBeLoaded); // Delegate for wave completion event
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent

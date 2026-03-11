@@ -56,22 +56,26 @@ void ACannon::SetCanCannonLoad(bool const bSetCanLoad, AActor *CannonballToLoad)
 		return;
 	}
 	
-	if (bSetCanLoad)
+	if (!Cast<ACannonball>(CannonballToLoad))
 	{
-		CannonballToLoad = Cast<ACannonball>(CannonballToLoad);
-		
-		if (!IsValid(CannonballToLoad))
-		{
-			return;
-		}
-	}
-	else
-	{
-		CannonballToLoad = nullptr;
+		return;
 	}
 	
 	const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
-	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad);
+	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad, this);
+}
+
+/* Assigns cannonball reference then deactives it, detached it from the player, and moves it to the cannon's location.
+ * Sets cannon unable to be loaded and ready to fire.
+ */
+void ACannon::LoadCannon(ACannonball* CannonballToLoad)
+{
+	Cannonball = CannonballToLoad;
+	Cannonball->SetPickUpSphereCollision(false);
+	Cannonball->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	Cannonball->SetActorLocation(GetActorLocation());
+	bCanBeLoaded = false;
+	bReadyToFire = true;
 }
 
 /* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
@@ -79,7 +83,7 @@ void ACannon::SetCanCannonLoad(bool const bSetCanLoad, AActor *CannonballToLoad)
  */
 void ACannon::FireCannonball()
 {
-	if (!bIsCannonLoaded)
+	if (!bReadyToFire)
 	{
 		return;
 	}
