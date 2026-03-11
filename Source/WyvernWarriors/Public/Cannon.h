@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Cannonball.h"
 #include "GameFramework/Actor.h"
 #include "Cannon.generated.h"
 
@@ -8,6 +9,7 @@ class ACannonball;
 class UWidgetComponent;
 class UStaticMeshComponent;
 class UBoxComponent;
+class USphereComponent;
 class ABossEnemy;
 
 UCLASS()
@@ -18,10 +20,10 @@ class WYVERNWARRIORS_API ACannon : public AActor
 public:
 	// Set's whether the cannon is ready to fire
 	UFUNCTION(Category = "Cannon")
-	void SetFirable(bool const bCanFire);
+	void SetLoadable(bool const bCanLoad);
 	
 	// Get whether the cannon is ready to fire
-	bool GetFirable() const { return bIsReadyToFire; } 
+	bool GetFirable() const { return bCanBeLoaded; } 
 	
 	// Fires the cannonball at the boss
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
@@ -32,12 +34,24 @@ public:
 	void SetBoss(ABossEnemy* Boss) { BossEnemy = Boss; }
 	
 private:
-	// Sets default values for this actor's properties
+	// Sets default values for this actor's properties and binds delegates
 	ACannon();
+	
+	// Function for when the cannonball enters the cannon's loading range
+	UFUNCTION(BlueprintCallable, Category = "Loading")
+	void OnCannonOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	
+	// Function for when the cannonball leaves the cannon's loading range
+	UFUNCTION(BlueprintCallable, Category = "Loading")
+	void OnCannonOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+	
+	// Function to set cannonball and cannon loaded status
+	UFUNCTION(BlueprintCallable, Category = "Loading")
+	void SetCanCannonLoad(bool const bSetCanLoad, AActor* CannonballToLoad);
 	
 	// Rotate the cannon to fire at where the boss will be
 	UFUNCTION(BlueprintCallable, Category = "Firing")
-	FRotator SetFiringRotation(ACannonball* Ball);
+	FRotator SetFiringRotation();
 	
 	// Mesh for the cannon object
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
@@ -49,7 +63,11 @@ private:
 	
 	// Root component for collision
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
-	UBoxComponent* BoxComponent;
+	UBoxComponent* CannonCollision;
+	
+	// Sphere component for detecting when cannonball is in loading range
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
+	USphereComponent* CannonballDetection;
 	
 	// Widget that shows a cannon ready to fire
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
@@ -57,11 +75,15 @@ private:
 	
 	// Is the cannon ready to fire
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
-	bool bIsReadyToFire = false;
+	bool bCanBeLoaded = false;
+	
+	// Is the cannon loaded with a cannonball
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
+	bool bIsCannonLoaded = false;
 	
 	// Cannonball that is fired
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
-	TSubclassOf<ACannonball> Cannonball;
+	ACannonball* Cannonball;
 	
 	// Boss enemy that is targeted
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
