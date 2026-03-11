@@ -28,6 +28,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector OnPatrolRouteKey;
 	
+	// Key for Force Return to patrol route bool
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
+	FBlackboardKeySelector ForceReturnKey;
+	
 	// Blackboard key for the player wyvern
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector SelfGruntKey;
