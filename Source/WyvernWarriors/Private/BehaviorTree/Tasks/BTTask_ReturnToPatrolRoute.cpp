@@ -20,6 +20,7 @@ void UBTTask_ReturnToPatrolRoute::InitializeFromAsset(UBehaviorTree& Asset)
 	{
 		SelfGruntKey.ResolveSelectedKey(*BlackboardData);
 		OnPatrolRouteKey.ResolveSelectedKey(*BlackboardData);
+		ForceReturnKey.ResolveSelectedKey(*BlackboardData);
 	}
 }
 
@@ -36,10 +37,11 @@ EBTNodeResult::Type UBTTask_ReturnToPatrolRoute::ExecuteTask(UBehaviorTreeCompon
 	return EBTNodeResult::InProgress; // Task is in progress
 }
 
-// Moves the grunt enemy back towards the patrol route
+/* Calls grunt enemy to return to patrol route and checks if it has reached the route. If it has, set On Patrol Route
+ * to true and Force Return to false, then finish the task with success.
+ */
 void UBTTask_ReturnToPatrolRoute::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
-	// Get grunt from blackboard key
 	AGruntEnemy* GruntEnemy = Cast<AGruntEnemy>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(SelfGruntKey.SelectedKeyName));
 	if (!IsValid(GruntEnemy))
 	{
@@ -47,12 +49,14 @@ void UBTTask_ReturnToPatrolRoute::TickTask(UBehaviorTreeComponent& OwnerComp, ui
 		return;
 	}
 
-	GruntEnemy->ReturnToRoute(DeltaSeconds); // Movement and rotation of grunt to route
+	GruntEnemy->ReturnToRoute(DeltaSeconds);
 	
-	// Succeed if grunt is on route
 	if (GruntEnemy->GetOnPatrolRoute())
 	{
-		OwnerComp.GetBlackboardComponent()->SetValueAsBool(OnPatrolRouteKey.SelectedKeyName, true);
+		UBlackboardComponent* BlackboardComponent = OwnerComp.GetBlackboardComponent();
+		BlackboardComponent->SetValueAsBool(OnPatrolRouteKey.SelectedKeyName, true);
+		BlackboardComponent->SetValueAsBool(ForceReturnKey.SelectedKeyName, false);
+		
 		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
 	}
 }
