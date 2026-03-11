@@ -66,7 +66,7 @@ public:
 	void FleePlayerCharacter(float const DeltaTime);
 	
 
-protected:
+private:
 	// Camera manager that is attached to player
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
 	APlayerCameraManager* PlayerCameraManager;

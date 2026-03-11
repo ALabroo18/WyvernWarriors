@@ -43,6 +43,7 @@ void UBTTask_ReturnToPatrolRoute::TickTask(UBehaviorTreeComponent& OwnerComp, ui
 	AGruntEnemy* GruntEnemy = Cast<AGruntEnemy>(OwnerComp.GetBlackboardComponent()->GetValueAsObject(SelfGruntKey.SelectedKeyName));
 	if (!IsValid(GruntEnemy))
 	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
 		return;
 	}
 

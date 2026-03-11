@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h"
 #include "Outpost.generated.h"
 
+class AGruntEnemy;
 class AEnemyPatrolRoute;
 
 UCLASS()
@@ -27,7 +28,13 @@ public:
 
 	// Gets the patrol route for enemies at this outpost
 	UFUNCTION(BlueprintCallable, Category = "Outpost")
-	AEnemyPatrolRoute* GetOutpostPatrolRoute() const { return OutpostPatrolRoute; } 
+	AEnemyPatrolRoute* GetOutpostPatrolRoute() const { return OutpostPatrolRoute; }
+	
+	/* Adds a grunt enemy to the outpost's managed array of grunt enemies
+	 * @param GruntEnemy - The grunt enemy to add to the outpost's management
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
+	void AddGruntEnemy(AGruntEnemy* GruntEnemy) { GruntEnemies.Add(GruntEnemy); }
 
 private:
 	// Whether the outpost is controlled by the player	
@@ -36,5 +43,9 @@ private:
 
 	// The patrol route for enemies at this outpost
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Outpost", meta = (AllowPrivateAccess = true))
-	AEnemyPatrolRoute* OutpostPatrolRoute; 
+	AEnemyPatrolRoute* OutpostPatrolRoute;
+	
+	// The grunt enemies currently at this outpost
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Outpost", meta = (AllowPrivateAccess = true))
+	TArray<AGruntEnemy*> GruntEnemies;
 };
