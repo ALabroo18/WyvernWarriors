@@ -1,9 +1,8 @@
 #include "Cannonball.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "GameManagers/GameModeLevel.h"
 #include "Components/SphereComponent.h"
-#include "GameManagers/Components/EventBusComponent.h"
+#include "GameManagers/GameModeLevel.h"
 
 /* Disables tick and sets up components on actor.
  * Sets projectile to not automatically move
@@ -30,15 +29,7 @@ void ACannonball::BeginPlay()
 	Super::BeginPlay();
 	InitialLocation = GetActorLocation();
 	
-	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode());
-	if (!IsValid(GameModeLevel))
-	{
-		return;
-	}
-
-	EventBus = GameModeLevel->GetEventBusComponent();
-	
-	EventBus->WyvernHandleCannonball.AddDynamic(this, &ACannonball::SetPickUpSphereCollision);
+	EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
 }
 
 /* Sets collisions of input sphere to none or query online
@@ -97,4 +88,12 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 {
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
+}
+
+/* Sets the cannonball as fired by activating its movement and setting it as active
+ */
+void ACannonball::SetAsFired()
+{
+	SetActiveness(true);
+	ProjectileMovement->Activate();
 }

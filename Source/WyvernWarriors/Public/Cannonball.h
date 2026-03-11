@@ -32,6 +32,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName const AttachSocket);
 	
+	// Sets cannonball active and activates projectile movement
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void SetAsFired();
+	
 private:	
 	// Sets default values for this actor's properties
 	ACannonball();
@@ -39,7 +43,7 @@ private:
 	// Set initial activeness and get event bus
 	virtual void BeginPlay() override;
 	
-	//
+	// Sets collisions of input sphere to none or query online
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void SetPickUpSphereCollision(bool const bIsEnabled);
 	

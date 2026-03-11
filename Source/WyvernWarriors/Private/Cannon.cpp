@@ -3,72 +3,128 @@
 #include "BossEnemy.h" 
 #include "Components/WidgetComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
+#include "GameManagers/GameModeLevel.h"
+#include "GameManagers/Components/EventBusComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
-// Sets default values for this actor's properties
+/* Sets up physics and detection collision components, static meshes for cannon top and bottoms, and UI widget
+ * component for cannon fireabiltiy. Binds delegates on collisions components.
+ */
 ACannon::ACannon()
 {
-	// Set up root box collider
-	BoxComponent = CreateDefaultSubobject<UBoxComponent>("Box Component");
-	SetRootComponent(BoxComponent);
+	CannonCollision = CreateDefaultSubobject<UBoxComponent>("Box Component");
+	SetRootComponent(CannonCollision);
 	
-	// Set up the static meshes
+	CannonballDetection = CreateDefaultSubobject<USphereComponent>("Cannonball Detection Sphere");
+	CannonballDetection->SetupAttachment(RootComponent);
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CannonballDetection->OnComponentBeginOverlap.AddDynamic(this, &ACannon::OnCannonOverlapBegin);
+	CannonballDetection->OnComponentEndOverlap.AddDynamic(this, &ACannon::OnCannonOverlapEnd);
+	
 	CannonTopMesh = CreateDefaultSubobject<UStaticMeshComponent>("Static Mesh Top");
 	CannonTopMesh->SetupAttachment(RootComponent);
 	CannonBottomMesh = CreateDefaultSubobject<UStaticMeshComponent>("Static Mesh Bottom");
 	CannonBottomMesh->SetupAttachment(RootComponent);
 	
-	// Set up the widget component
 	ReadyToFireWidget = CreateDefaultSubobject<UWidgetComponent>("Ready To Fire Widget");
 	ReadyToFireWidget->SetupAttachment(RootComponent);
 }
 
-// Rotates the cannon and fires the cannonball at the boss
+/* Calls method that cannon can be loaded
+ */
+void ACannon::OnCannonOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	SetCanCannonLoad(true, OtherActor);
+}
+
+/* Calls method that cannon can't be loaded
+ */
+void ACannon::OnCannonOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	SetCanCannonLoad(false, OtherActor);
+}
+
+/* Sets or unsets cannonball to be loaded. Broadcasts delegate on if cannon can be loaded or not.
+ */
+void ACannon::SetCanCannonLoad(bool const bSetCanLoad, AActor *CannonballToLoad)
+{
+	if (!bCanBeLoaded)
+	{
+		return;
+	}
+	
+	if (bSetCanLoad)
+	{
+		CannonballToLoad = Cast<ACannonball>(CannonballToLoad);
+		
+		if (!IsValid(CannonballToLoad))
+		{
+			return;
+		}
+	}
+	else
+	{
+		CannonballToLoad = nullptr;
+	}
+	
+	const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
+	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad);
+}
+
+/* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
+ * cannon as not ready to fire after firing.
+ */
 void ACannon::FireCannonball()
 {
-	// Return if no boss to shot at
+	if (!bIsCannonLoaded)
+	{
+		return;
+	}
+	
 	if (!IsValid(BossEnemy))
 	{
 		return;
 	}
 	
-	FTransform SpawnTransform(FRotator::ZeroRotator, GetActorLocation(), FVector::One()); // Create spawn transform for cannonball
-	
-	// Defer spawning cannonball to determine cannon rotation
-	ACannonball* NewCannonball = GetWorld()->SpawnActorDeferred<ACannonball>(Cannonball, SpawnTransform);
-	if (!IsValid(NewCannonball))
+	if (!IsValid(Cannonball))
 	{
 		return;
 	}
 	
-	SpawnTransform.SetRotation(SetFiringRotation(NewCannonball).Quaternion()); // Rotate cannon and set spawn rotation of cannonball
-	
-	NewCannonball->FinishSpawning(SpawnTransform); // Finish spawning cannonball
-	SetFirable(false); // Set cannon as not ready to fire after firing
+	Cannonball->SetActorRotation(SetFiringRotation());
+	Cannonball->SetAsFired();
+	SetLoadable(false);
 }
 
-// Set cannon fireable and widget visibility
-void ACannon::SetFirable(bool const bCanFire)
+/* Sets whether the cannon is ready to fire. Sets if cannon is loaded, visibility of ready to fire widget, and
+ * collision of cannon components based on input.
+ * @param bCanFire - Whether the cannon should be ready to fire or not
+ */
+void ACannon::SetLoadable(bool const bCanLoad)
 {
-	bIsReadyToFire = bCanFire; // Set whether the cannon is ready to fire
-	ReadyToFireWidget->SetVisibility(bCanFire); // Set widget visibility to match whether the cannon is ready to fire
+	bCanBeLoaded = bCanLoad;
+	ReadyToFireWidget->SetVisibility(bCanLoad);
 	
-	// Set collision for box collision
-	if (bCanFire)
+	if (bCanLoad)
 	{
-		BoxComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 	else
 	{
-		BoxComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 
 // Rotate the cannon to fire at where the boss will be
-FRotator ACannon::SetFiringRotation(ACannonball* Ball)
+FRotator ACannon::SetFiringRotation()
 {
 	FVector const CurrentLocation = GetActorLocation(); // Get actor location
-	float const CannonballSpeed = Ball->GetProjectileSpeed(); // Get cannonball speed
+	float const CannonballSpeed = Cannonball->GetProjectileSpeed(); // Get cannonball speed
 	float PreviousDistance = 0.f; // Variable for distance of previous trial
 	
 	float DistanceToBoss = UKismetMathLibrary::Vector_Distance(CurrentLocation, BossEnemy->GetActorLocation()); // Get distance to current boss location

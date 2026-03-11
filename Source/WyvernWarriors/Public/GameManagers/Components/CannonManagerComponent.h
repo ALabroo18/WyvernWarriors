@@ -26,7 +26,7 @@ public:
 
 	// Sets multiple random cannons as able to fire at the boss
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetMultipleCannonsFireable(bool bCanFire, int32 NumberOfCannons);
+	void SetMultipleCannonsLoadable(bool const bCanLoad, int32 const NumberOfCannons);
 
 	// Returns the maximum amount of active cannons
 	int32 GetMaxActiveCannons() const {return MaxActiveCannons; };
@@ -46,7 +46,7 @@ public:
 private:
 	// Set a random cannon as able to fire at the boss
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetCannonFireable(bool bCanFire);
+	void SetCannonLoadable(bool const bCanload);
 
 	// Array of activatable cannon objects
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
