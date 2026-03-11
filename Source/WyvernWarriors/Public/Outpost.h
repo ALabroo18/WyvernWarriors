@@ -20,6 +20,10 @@ public:
 	// Gets whether the outpost is controlled by the player
 	UFUNCTION(BlueprintCallable, Category = "Outpost")
 	bool GetPlayerCapturedStatus() const { return bIsPlayerControlled; }; 
+	
+	// Sets whether the outpost is controlled by the player
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
+	void SetPlayerCapturedStatus(bool const bIsCaptured) { bIsPlayerControlled = bIsCaptured; }; 
 
 	// Gets the patrol route for enemies at this outpost
 	UFUNCTION(BlueprintCallable, Category = "Outpost")
