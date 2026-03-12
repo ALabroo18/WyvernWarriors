@@ -34,7 +34,7 @@ public:
 	
 	// Sets cannonball active and activates projectile movement
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
-	void SetAsFired();
+	void SetAsFired(FRotator const FiringRotation);
 	
 	// Sets collisions of input sphere to none or query online
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")

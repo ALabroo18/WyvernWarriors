@@ -69,15 +69,15 @@ void ACannonball::SetActiveness(bool const bIsActive)
 	}
 }
 
-/* Detaches cannonball from Wyvern and turn pickup sphere collisions on. Then reset the cannonball to its initial
- * location, and stops its movement
+/* Detaches cannonball from any owning actor and turn pickup sphere collisions on. Then reset the cannonball to its
+ * initial location, and stops its movement
  */
 void ACannonball::ResetCannonball()
 {
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	SetPickUpSphereCollision(true);
-	SetActorLocation(InitialLocation);
 	ProjectileMovement->StopMovementImmediately(); 
+	SetActorLocation(InitialLocation);
 }
 
 /* Attaches cannonball to the specified socket on the Wyvern mesh and disables pickup sphere collision
@@ -90,10 +90,12 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 	SetPickUpSphereCollision(false);
 }
 
-/* Sets the cannonball as fired by activating its movement and setting it as active
+/* Sets the cannonball as fired by rotating itself, activating its movement, and setting it as active
+ * @param BossLocation - The location of the boss to rotate towards when fired
  */
-void ACannonball::SetAsFired()
+void ACannonball::SetAsFired(FRotator const FiringRotation)
 {
 	SetActiveness(true);
+	ProjectileMovement->Velocity = FiringRotation.Vector() * ProjectileMovement->GetMaxSpeed();
 	ProjectileMovement->Activate();
 }

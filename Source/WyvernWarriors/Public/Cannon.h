@@ -47,7 +47,7 @@ private:
 	
 	// Function to set cannonball and cannon loaded status
 	UFUNCTION(BlueprintCallable, Category = "Loading")
-	void SetCanCannonLoad(bool const bSetCanLoad, AActor* CannonballToLoad);
+	void SetCanLoadCannon(bool const bSetCanLoad, AActor* CannonballToLoad);
 	
 	// Sets up cannon as able to fire cannonball
 	UFUNCTION(BlueprintCallable, Category = "Loading")
