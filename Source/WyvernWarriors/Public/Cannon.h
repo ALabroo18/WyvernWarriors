@@ -47,7 +47,11 @@ private:
 	
 	// Function to set cannonball and cannon loaded status
 	UFUNCTION(BlueprintCallable, Category = "Loading")
-	void SetCanCannonLoad(bool const bSetCanLoad, AActor* CannonballToLoad);
+	void SetCanLoadCannon(bool const bSetCanLoad, AActor* CannonballToLoad);
+	
+	// Sets up cannon as able to fire cannonball
+	UFUNCTION(BlueprintCallable, Category = "Loading")
+	void LoadCannon(ACannonball* CannonballToLoad);
 	
 	// Rotate the cannon to fire at where the boss will be
 	UFUNCTION(BlueprintCallable, Category = "Firing")
@@ -79,7 +83,7 @@ private:
 	
 	// Is the cannon loaded with a cannonball
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
-	bool bIsCannonLoaded = false;
+	bool bReadyToFire = false;
 	
 	// Cannonball that is fired
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))

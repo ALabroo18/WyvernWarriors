@@ -36,7 +36,7 @@ ACannon::ACannon()
 void ACannon::OnCannonOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	SetCanCannonLoad(true, OtherActor);
+	SetCanLoadCannon(true, OtherActor);
 }
 
 /* Calls method that cannon can't be loaded
@@ -44,34 +44,42 @@ void ACannon::OnCannonOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
 void ACannon::OnCannonOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	SetCanCannonLoad(false, OtherActor);
+	SetCanLoadCannon(false, OtherActor);
 }
 
 /* Sets or unsets cannonball to be loaded. Broadcasts delegate on if cannon can be loaded or not.
  */
-void ACannon::SetCanCannonLoad(bool const bSetCanLoad, AActor *CannonballToLoad)
+void ACannon::SetCanLoadCannon(bool const bSetCanLoad, AActor *CannonballToLoad)
 {
 	if (!bCanBeLoaded)
 	{
 		return;
 	}
 	
-	if (bSetCanLoad)
+	if (!Cast<ACannonball>(CannonballToLoad))
 	{
-		CannonballToLoad = Cast<ACannonball>(CannonballToLoad);
-		
-		if (!IsValid(CannonballToLoad))
-		{
-			return;
-		}
-	}
-	else
-	{
-		CannonballToLoad = nullptr;
+		return;
 	}
 	
 	const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
-	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad);
+	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad, this);
+}
+
+/* Assigns cannonball reference then deactivates it, detached it from the player, and moves it to the cannon's location.
+ * Disables cannonball detection sphere then sets cannon unable to be loaded and ready to fire.
+ */
+void ACannon::LoadCannon(ACannonball* CannonballToLoad)
+{
+	Cannonball = CannonballToLoad;
+	Cannonball->SetPickUpSphereCollision(false);
+	Cannonball->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	Cannonball->SetActorLocation(GetActorLocation());
+	Cannonball->SetActiveness(false);
+	
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetCanLoadCannon(false, CannonballToLoad);
+	bCanBeLoaded = false;
+	bReadyToFire = true;
 }
 
 /* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
@@ -79,7 +87,7 @@ void ACannon::SetCanCannonLoad(bool const bSetCanLoad, AActor *CannonballToLoad)
  */
 void ACannon::FireCannonball()
 {
-	if (!bIsCannonLoaded)
+	if (!bReadyToFire)
 	{
 		return;
 	}
@@ -94,14 +102,13 @@ void ACannon::FireCannonball()
 		return;
 	}
 	
-	Cannonball->SetActorRotation(SetFiringRotation());
-	Cannonball->SetAsFired();
+	Cannonball->SetAsFired(SetFiringRotation());
 	SetLoadable(false);
 }
 
-/* Sets whether the cannon is ready to fire. Sets if cannon is loaded, visibility of ready to fire widget, and
- * collision of cannon components based on input.
- * @param bCanFire - Whether the cannon should be ready to fire or not
+/* Sets whether the cannon is able to be loaded. Sets the visibility of the ready to fire widget and the collision of
+ * the cannon components based on whether the cannon can be loaded or not.
+ * @param bCanLoad- Whether the cannon should be able to be loaded or not
  */
 void ACannon::SetLoadable(bool const bCanLoad)
 {
@@ -110,13 +117,12 @@ void ACannon::SetLoadable(bool const bCanLoad)
 	
 	if (bCanLoad)
 	{
-		CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 	else
 	{
 		CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 }
 

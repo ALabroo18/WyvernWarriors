@@ -34,7 +34,11 @@ public:
 	
 	// Sets cannonball active and activates projectile movement
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
-	void SetAsFired();
+	void SetAsFired(FRotator const FiringRotation);
+	
+	// Sets collisions of input sphere to none or query online
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void SetPickUpSphereCollision(bool const bIsEnabled);
 	
 private:	
 	// Sets default values for this actor's properties
@@ -42,10 +46,6 @@ private:
 	
 	// Set initial activeness and get event bus
 	virtual void BeginPlay() override;
-	
-	// Sets collisions of input sphere to none or query online
-	UFUNCTION(BlueprintCallable, Category = "Cannonball")
-	void SetPickUpSphereCollision(bool const bIsEnabled);
 	
 	// Component for mesh of the actor
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
