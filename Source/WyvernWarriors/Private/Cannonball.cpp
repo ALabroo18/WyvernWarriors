@@ -1,9 +1,8 @@
 #include "Cannonball.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "GameManagers/GameModeLevel.h"
 #include "Components/SphereComponent.h"
-#include "GameManagers/Components/EventBusComponent.h"
+#include "GameManagers/GameModeLevel.h"
 
 /* Disables tick and sets up components on actor.
  * Sets projectile to not automatically move
@@ -30,15 +29,7 @@ void ACannonball::BeginPlay()
 	Super::BeginPlay();
 	InitialLocation = GetActorLocation();
 	
-	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode());
-	if (!IsValid(GameModeLevel))
-	{
-		return;
-	}
-
-	EventBus = GameModeLevel->GetEventBusComponent();
-	
-	EventBus->WyvernHandleCannonball.AddDynamic(this, &ACannonball::SetPickUpSphereCollision);
+	EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
 }
 
 /* Sets collisions of input sphere to none or query online
@@ -78,15 +69,15 @@ void ACannonball::SetActiveness(bool const bIsActive)
 	}
 }
 
-/* Detaches cannonball from Wyvern and turn pickup sphere collisions on. Then reset the cannonball to its initial
- * location, and stops its movement
+/* Detaches cannonball from any owning actor and turn pickup sphere collisions on. Then reset the cannonball to its
+ * initial location, and stops its movement
  */
 void ACannonball::ResetCannonball()
 {
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	SetPickUpSphereCollision(true);
-	SetActorLocation(InitialLocation);
 	ProjectileMovement->StopMovementImmediately(); 
+	SetActorLocation(InitialLocation);
 }
 
 /* Attaches cannonball to the specified socket on the Wyvern mesh and disables pickup sphere collision
@@ -97,4 +88,14 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 {
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
+}
+
+/* Sets the cannonball as fired by rotating itself, activating its movement, and setting it as active
+ * @param BossLocation - The location of the boss to rotate towards when fired
+ */
+void ACannonball::SetAsFired(FRotator const FiringRotation)
+{
+	SetActiveness(true);
+	ProjectileMovement->Velocity = FiringRotation.Vector() * ProjectileMovement->GetMaxSpeed();
+	ProjectileMovement->Activate();
 }

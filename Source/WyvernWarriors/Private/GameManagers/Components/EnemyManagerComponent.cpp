@@ -116,31 +116,31 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(AEnemyPatrolRoute* Specific
 	return NewGruntEnemy;
 }
 
-// Spawns multiple grunt enemies for an outpost, with special handling for the final wave
-void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* outpost, bool bIsFinalWave)
+/* Spawns a wave of grunt enemies based on the wave number, with more enemies spawning for non-final waves and fewer
+ * for final wave to allow for boss fight
+ * @param Outpost - The outpost for which to spawn the grunt enemies
+ * @param bIsFinalWave - Whether the current wave is the final wave
+ */
+void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
 {
-	// Do not spawn if at max capacity
 	if (GruntEnemies.Num() >= GruntSpawnCapacity)
 	{
 		return;
 	}
-
-	// Get the patrol route for the outpost
-	AEnemyPatrolRoute* OutpostPatrolRoute = outpost->GetOutpostPatrolRoute();
+	
+	AEnemyPatrolRoute* OutpostPatrolRoute = Outpost->GetOutpostPatrolRoute();
 	if (!IsValid(OutpostPatrolRoute))
 	{
 		return;
 	}
 	
-	// Determine spawn amount based on whether it's the final wave
 	int32 SpawnAmount = bIsFinalWave
 		? FMath::Max(0, 2 - OutpostPatrolRoute->GetNumEnemiesOnRoute())
 		: FMath::RandRange(2, 4);
-
-	// Spawn enemies while respecting spawn capacity and route limits
+	
 	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
 	{
-		SpawnGruntEnemy(OutpostPatrolRoute);
+		Outpost->AddGruntEnemy(SpawnGruntEnemy(OutpostPatrolRoute));
 		SpawnAmount--;
 	}
  }

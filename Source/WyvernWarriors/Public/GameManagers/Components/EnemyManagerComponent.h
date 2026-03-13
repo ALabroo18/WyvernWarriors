@@ -22,7 +22,7 @@ public:
 	
 	// Spawns a wave of grunt enemies based on the wave number
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
-	void SpawnGruntEnemiesForOutpost(AOutpost* outpost, bool bIsFinalWave);
+	void SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave);
 	
 	// Spawns a single grunt enemy at a random spawn point
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")

@@ -23,7 +23,7 @@ public:
 	virtual void OnPossess(APawn* InPawn) override;
 
 
-protected:
+private:
 	// Blackboard component for behavior tree
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
 	UBlackboardComponent* GruntBlackboardComponent;

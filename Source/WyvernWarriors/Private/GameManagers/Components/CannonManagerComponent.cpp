@@ -28,26 +28,28 @@ void UCannonManagerComponent::ChangeCannonsFireable(EForceFieldChange const Forc
 	switch (ForceFieldChange)
 	{
 	case EForceFieldChange::Hit:
-		SetCannonFireable(true);
+		SetCannonLoadable(true);
 		break;
 	case EForceFieldChange::Depleted:
-		SetMultipleCannonsFireable(false, ActiveCannons.Num());
+		SetMultipleCannonsLoadable(false, ActiveCannons.Num());
 		break;
 	case EForceFieldChange::Restored:
-		SetMultipleCannonsFireable(true, MaxActiveCannons);
+		SetMultipleCannonsLoadable(true, MaxActiveCannons);
 		break;
 	}
 }
 
-// Sets up cannons and cannonball stacks for final wave
+/* Sets cannonballs and stacks as active and sets some cannons as able to fire at the boss at the start of the final
+ * wave. Also sets the boss for the cannons to target. 
+ */
 void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
 	if (bIsFinalWave)
 	{
-		SetCannonActivatables(true); // Set cannonballs and stacks as active for final wave
-		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent(); // Get reference to enemy manager
-		SetCannonsBoss(EnemyManager->GetBossEnemy()); // Set boss enemy for cannons to target
-		SetMultipleCannonsFireable(true, MaxActiveCannons); // Set multiple cannons as able to fire at start of final wave
+		SetCannonActivatables(true);
+		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent();
+		SetCannonsBoss(EnemyManager->GetBossEnemy());
+		SetMultipleCannonsLoadable(true, MaxActiveCannons);
 	}
 }
 
@@ -94,42 +96,44 @@ void UCannonManagerComponent::SetStartVariables()
 }
 
 
-// Set a random cannon as able to fire at the boss
-void UCannonManagerComponent::SetCannonFireable(bool bCanFire)
+/* Sets a random cannon as able to be loaded or not. Moves cannon between active and inactive arrays and sets cannon
+ * as loadable based on input.
+ * @param bCanLoad - Whether the cannon should be able to be loaded or not
+ */
+void UCannonManagerComponent::SetCannonLoadable(bool const bCanload)
 {
-	// No more cannons to set as able to fire
 	if (InactiveCannons.IsEmpty())
 	{
 		return;
 	}
 	
-	ACannon* CannonToFire; // Initialization of cannon reference
+	ACannon* CannonToFire;
 	
-	// Move cannon between from inactive to active array
-	if (bCanFire)
+	if (bCanload)
 	{
-	    CannonToFire = InactiveCannons[FMath::RandRange(0, InactiveCannons.Num() - 1)]; // Get random cannon from array
-		InactiveCannons.Remove(CannonToFire); // Remove cannon from inactive cannons array
-		ActiveCannons.Add(CannonToFire); // Add cannon to active cannons array
+	    CannonToFire = InactiveCannons[FMath::RandRange(0, InactiveCannons.Num() - 1)];
+		InactiveCannons.Remove(CannonToFire);
+		ActiveCannons.Add(CannonToFire);
 	}
-	// Move cannon between from active to inactive array
 	else
 	{
-	    CannonToFire = ActiveCannons[FMath::RandRange(0, ActiveCannons.Num() - 1)]; // Get random cannon from array
-		ActiveCannons.Remove(CannonToFire); // Remove cannon from active cannons array
-		InactiveCannons.Add(CannonToFire); // Add cannon to inactive cannons array
+	    CannonToFire = ActiveCannons[FMath::RandRange(0, ActiveCannons.Num() - 1)];
+		ActiveCannons.Remove(CannonToFire);
+		InactiveCannons.Add(CannonToFire);
 	}
 	
-	CannonToFire->SetFirable(bCanFire);
+	CannonToFire->SetLoadable(bCanload);
 }
 
-// Sets multiple random cannons as able to fire at the boss
-void UCannonManagerComponent::SetMultipleCannonsFireable(bool bCanFire, int32 NumberOfCannons)
+/* Sets multiple cannons as able to be loaded.
+ * @param bCanLoad - Whether the cannons should be able to be loaded or not
+ * @param NumberOfCannons - The number of cannons to set as able to be loaded
+*/
+void UCannonManagerComponent::SetMultipleCannonsLoadable(bool const bCanLoad, int32 const NumberOfCannons)
 {
-	// Set multiple cannons' ability to fire
 	for (int i = 0; i < NumberOfCannons; i++)
 	{
-		SetCannonFireable(bCanFire);
+		SetCannonLoadable(bCanLoad);
 	}
 }
 
