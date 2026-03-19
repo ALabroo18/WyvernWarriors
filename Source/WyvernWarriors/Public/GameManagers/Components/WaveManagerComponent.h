@@ -31,7 +31,7 @@ public:
 	
 	// Recaptures outposts
 	UFUNCTION(BlueprintCallable, Category = "Wave")
-	void RecaptureOutposts(bool bRecaptureAll = false); 
+	void RecaptureOutposts(); 
 	
 	// Resets the control meter to half its maximum value over time
 	UFUNCTION(BlueprintCallable, Category = "Control Meter")
@@ -39,7 +39,7 @@ public:
 	
 	// Modifies the current value of the control meter
 	UFUNCTION(BlueprintCallable, Category = "Control Meter")
-	void ModifyControlMeterCurrent(float const Amount, bool const bCanBypassReset); 
+	void ModifyControlMeterCurrent(float Amount, bool bCanBypassReset); 
 
 private:
 	// Timer handle for control meter reset
