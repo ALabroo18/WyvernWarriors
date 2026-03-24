@@ -14,6 +14,7 @@ void UWaveManagerComponent::WaveCompleted()
 	if (bIsFinalWave)
 	{
 		GameModeLevel->WinLevel();
+		EventBus->OnWaveComplete.Broadcast(bIsFinalWave); // Trigger wave completed delegate
 		return;
 	}
 	
