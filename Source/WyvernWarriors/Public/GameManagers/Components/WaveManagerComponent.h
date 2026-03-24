@@ -22,7 +22,7 @@ public:
 	void SetStartVariables(); 
 	
 	// Completes the current wave
-	UFUNCTION(Category = "Wave")
+	UFUNCTION(BlueprintCallable, Category = "Wave")
 	void WaveCompleted(); 
 	
 	// Starts a new wave
