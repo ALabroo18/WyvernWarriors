@@ -123,7 +123,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(AEnemyPatrolRoute* Specific
  */
 void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
 {
-	if (GruntEnemies.Num() >= GruntSpawnCapacity)
+	if (GruntEnemies.Num())
 	{
 		return;
 	}
@@ -134,9 +134,11 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 		return;
 	}
 	
+	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute();
+	
 	int32 SpawnAmount = bIsFinalWave
-		? FMath::Max(0, 2 - OutpostPatrolRoute->GetNumEnemiesOnRoute())
-		: FMath::RandRange(2, 4);
+		? FMath::Max(0, MaxGruntSpawn - OutpostPatrolRoute->GetNumEnemiesOnRoute())
+		: FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
 	
 	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
 	{
