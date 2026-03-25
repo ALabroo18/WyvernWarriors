@@ -27,10 +27,12 @@ void UWaveManagerComponent::WaveCompleted()
 	NewWave(); // Start new wave
 }
 
-// Starts a new wave
+/* Checks if the new wave is the final wave or not. If final wave, set variable and bind cannon and enemy manager, then
+ * set all outposts as player owned. If not, recapture outposts and reset control meter. Finish by broadcasting new
+ * wave delegate.
+ */
 void UWaveManagerComponent::NewWave()
 {
-	// Check if final wave reached and set flag accordingly
 	if (int32 const CurrentWaveNumber = GameStateLevel->GetCurrentWaveNumber(); CurrentWaveNumber == FinalWaveNumber)
 	{
 		bIsFinalWave = true;
@@ -39,14 +41,25 @@ void UWaveManagerComponent::NewWave()
 		UCannonManagerComponent* CannonManager = GameModeLevel->GetCannonManager();
 		EventBus->OnNewWave.AddDynamic(EnemyManager, &UEnemyManagerComponent::OnNewWave);
 		EventBus->OnNewWave.AddDynamic(CannonManager, &UCannonManagerComponent::OnNewWave);
+		
+		for (AOutpost* Outpost : Outposts)
+		{
+			if (IsValid(Outpost))
+			{
+				if (!Outpost->GetPlayerCapturedStatus())
+				{
+					Outpost->NewWave(bIsFinalWave);
+				}
+			}
+		}
 	}
 	else
 	{
-		RecaptureOutposts(); // Recaptures outposts
-		ResetControlMeter(); // Reset control meter
+		RecaptureOutposts();
+		ResetControlMeter();
 	}
 
-	EventBus->OnNewWave.Broadcast(bIsFinalWave); // Trigger new wave delegate
+	EventBus->OnNewWave.Broadcast(bIsFinalWave);
 }
 
 // Recaptures outposts based on outpost and wave status
