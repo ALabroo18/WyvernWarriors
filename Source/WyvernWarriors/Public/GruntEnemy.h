@@ -54,7 +54,7 @@ public:
 	
 	// Sets grunt on patrol route if close enough
 	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void SetOnPatrolRoute();
+	void CheckOnPatrolRoute();
 	
 	// Gets on route bool
 	bool GetOnPatrolRoute() const { return bOnRoute; }
@@ -101,7 +101,7 @@ private:
 	
 	// Array of enemies that are within detection sphere
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	TArray<AGruntEnemy*> NearbyEnemies;
+	TArray<AActor*> NearbyEnemies;
 	
 	// Projectile used for attacking player
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
