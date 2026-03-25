@@ -123,7 +123,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(AEnemyPatrolRoute* Specific
  */
 void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
 {
-	if (GruntEnemies.Num())
+	if (GruntEnemies.Num() >= GruntSpawnCapacity)
 	{
 		return;
 	}
