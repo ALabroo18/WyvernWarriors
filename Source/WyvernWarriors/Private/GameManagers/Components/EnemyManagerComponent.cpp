@@ -61,10 +61,8 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 			DirectionAway += SpawnLocation - NearbyEnemy->GetActorLocation();
 		}
 		DirectionAway /= NearbyEnemies.Num();
-		UE_LOG(LogTemp, Warning, TEXT("DirectionAway: %s"), *DirectionAway.ToString());
 		SpawnLocation += DirectionAway.GetSafeNormal() * MinimumEnemySpawnDistance;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Adjusted SpawnLocation: %s"), *SpawnLocation.ToString());
 	return FTransform(SpawnRotation, SpawnLocation, FVector::One()); // Set transform for the spawned enemy
 }
 
@@ -112,16 +110,14 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
 AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(FTransform const SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route)
 {
 	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform); // Set up spawn for grunt enemy
-	UE_LOG(LogTemp, Warning, TEXT("Spawning grunt enemy: %s"), *NewGruntEnemy->GetName());
 	if (!IsValid(NewGruntEnemy))
 	{
 		return nullptr;
 	}
 	
 	bool const bUseSpecificRoute = IsValid(Route);
-	
 	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bUseSpecificRoute); 
-	UE_LOG(LogTemp, Warning, TEXT("Initializing grunt enemy: %s"), *NewGruntEnemy->GetName());
+	
 	GruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyEnemiesOnRoute(true);
 	
