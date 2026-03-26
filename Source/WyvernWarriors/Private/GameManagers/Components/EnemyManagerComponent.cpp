@@ -11,113 +11,126 @@
 #include "GameManagers/Components/CannonManagerComponent.h"
 
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
-AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(AEnemyPatrolRoute* SpecificPatrolRoute)
+FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
 {
-	// Do not spawn if at max capacity
-	if (GruntEnemies.Num() >= GruntSpawnCapacity)
-	{
-		return nullptr;
-	}
-
-	bool const bPatrolRouteSpecified = IsValid(SpecificPatrolRoute); // Check if a patrol route was specified
-	
-	// If no patrol route specified, select a random valid patrol route
-	if (!bPatrolRouteSpecified)
-	{
-		// Do not spawn if no spawn points available
-		if (EnemySpawnPoints.IsEmpty())
-		{
-			return nullptr;
-		}
-		
-		// Filter for valid patrol routes that are not full
-		TArray<AEnemyPatrolRoute*> OpenPatrolRoutes;
-		for (AEnemyPatrolRoute* Route : EnemyPatrolRoutes)
-		{
-			if (IsValid(Route))
-			{
-				// Skip full patrol routes and boss patrol route
-				if (Route->GetRouteFull() || Route->ActorHasTag("Boss"))
-				{
-					continue;
-				}
-
-				OpenPatrolRoutes.Add(Route);
-			}
-		}
-
-		// If no valid patrol routes are available, exit
-		if (OpenPatrolRoutes.IsEmpty())
-		{
-			return nullptr;
-		}
-
-		SpecificPatrolRoute = OpenPatrolRoutes[FMath::RandRange(0, OpenPatrolRoutes.Num() - 1)]; // Select a random valid patrol route
-	}
-	else
-	{
-		// Ensure the specified patrol route is not full
-		if (SpecificPatrolRoute->GetRouteFull())
-		{
-			return nullptr;
-		}
-	}
-
-	// Ensure the patrol route has a valid spline component
-	if (!IsValid(SpecificPatrolRoute->GetComponentByClass<USplineComponent>()))
-	{
-		return nullptr;
-	}
-	
 	FVector SpawnLocation; // Location where the enemy will be spawned
 	FRotator SpawnRotation; // Rotation for the spawned enemy
-	float const DistanceAlongSpline = FMath::RandRange(0.f, SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetSplineLength()); // Determine a random distance along the spline for grunt initialization
 
 	// Determine spawn location and rotation based on whether a patrol route was specified
-	if (bPatrolRouteSpecified)
+	if (IsValid(SpecificPatrolRoute))
 	{
-		SpawnLocation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get the location at the random distance along the spline
-		SpawnRotation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get the rotation at the spawn location
+		DistanceAlongSpline = FMath::RandRange(0.f, SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetSplineLength());
+		SpawnLocation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
+		SpawnRotation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
 	}
 	else
 	{
 		const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
 		if (!IsValid(SpawnPoint))
 		{
-			return nullptr;
+			return FTransform::Identity;
 		}
-
 		SpawnLocation = SpawnPoint->GetActorLocation(); // Get the location of the spawn point
 		SpawnRotation = FRotator(0.f, 0.f, 0.f); // Default rotation for the spawned enemy
 	}
 
-	FVector const PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation(); // Get the player's location
+
+	FVector const PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation(); // Get the player's location'
 	float const DistanceToPlayer = FVector::Dist(SpawnLocation, PlayerLocation); // Calculate distance from spawn point to player
 	
-	// Ensure spawn point is not close to player
 	if (DistanceToPlayer < MinimumPlayerSpawnDistance) 
+	{
+		return FTransform::Identity;
+	}
+	
+	TArray<AActor*> NearbyEnemies;
+	bool const bIsEnemyNearby = UKismetSystemLibrary::SphereOverlapActors(
+		GetWorld(),
+		SpawnLocation,
+		MinimumEnemySpawnDistance, 
+		TArray<TEnumAsByte<EObjectTypeQuery>>(),
+		AGruntEnemy::StaticClass(), 
+		TArray<AActor*>(), 
+		NearbyEnemies);
+
+	if (bIsEnemyNearby)
+	{
+		FVector DirectionAway = FVector::Zero();
+		for (const AActor* NearbyEnemy : NearbyEnemies)
+		{
+			DirectionAway += SpawnLocation - NearbyEnemy->GetActorLocation();
+		}
+		DirectionAway /= NearbyEnemies.Num();
+		UE_LOG(LogTemp, Warning, TEXT("DirectionAway: %s"), *DirectionAway.ToString());
+		SpawnLocation += DirectionAway.GetSafeNormal() * MinimumEnemySpawnDistance;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Adjusted SpawnLocation: %s"), *SpawnLocation.ToString());
+	return FTransform(SpawnRotation, SpawnLocation, FVector::One()); // Set transform for the spawned enemy
+}
+
+/* Loops through all patrol routes and adds open non-boss patrol route to an array. Selects one patrol route from array
+ * to return. Returns early if there are no patrol route or open patrol routes.
+ * @return AEnemyPatrolRoute = the route for the grunt to spawn on
+ */
+AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
+{
+	if (EnemyPatrolRoutes.IsEmpty())
+	{
+		return nullptr;
+	}
+	
+	TArray<AEnemyPatrolRoute*> OpenPatrolRoutes;
+	for (AEnemyPatrolRoute* Route : EnemyPatrolRoutes)
+	{
+		if (IsValid(Route))
+		{
+			// Skip full patrol routes and boss patrol route
+			if (Route->GetRouteFull() || Route->ActorHasTag("Boss"))
+			{
+				continue;
+			}
+
+			OpenPatrolRoutes.Add(Route);
+		}
+	}
+	
+	if (OpenPatrolRoutes.IsEmpty())
 	{
 		return nullptr;
 	}
 
-	FTransform const SpawnTransform(SpawnRotation, SpawnLocation, FVector::One()); // Set transform for the spawned enemy
+	return OpenPatrolRoutes[FMath::RandRange(0, OpenPatrolRoutes.Num() - 1)];
+}
+
+/* Defers spawning the grunt to initialize grunt, add to grunt array, and increase route grunt count. Spawns grunt at
+ * specified transform after.
+ * @param SpawnTransform - transform that the grunt is spawned at
+ * @param DistanceAlongSpline - distance along patrol route grunt is spawned with
+ * @param Route - patrol route enemy is assigned to on spawn
+ * @param bUseSpecificPatrolRoute - bool for if grunt route is random or predetermined
+ */
+AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(FTransform const SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route)
+{
 	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform); // Set up spawn for grunt enemy
-	
-	// Check for new grunt validity
+	UE_LOG(LogTemp, Warning, TEXT("Spawning grunt enemy: %s"), *NewGruntEnemy->GetName());
 	if (!IsValid(NewGruntEnemy))
 	{
 		return nullptr;
 	}
-
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, SpecificPatrolRoute, bPatrolRouteSpecified); // Initialize the enemy on the route
-	GruntEnemies.Add(NewGruntEnemy); // Add the new enemy to the managed array
-	SpecificPatrolRoute->ModifyEnemiesOnRoute(true); // Increment the enemy count on the patrol route
-	NewGruntEnemy->FinishSpawning(SpawnTransform); // Spawn the grunt enemy
+	
+	bool const bUseSpecificRoute = IsValid(Route);
+	
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bUseSpecificRoute); 
+	UE_LOG(LogTemp, Warning, TEXT("Initializing grunt enemy: %s"), *NewGruntEnemy->GetName());
+	GruntEnemies.Add(NewGruntEnemy);
+	Route->ModifyEnemiesOnRoute(true);
+	
+	NewGruntEnemy->FinishSpawning(SpawnTransform);
 	return NewGruntEnemy;
 }
 
-/* Spawns a wave of grunt enemies based on the wave number, with more enemies spawning for non-final waves and fewer
- * for final wave to allow for boss fight
+/* Spawns grunt enemies on outpost patrol route, with amount depending on if final wave or not. Doesn't spawn if too
+ * many grunts or if outpost patrol route is full.
  * @param Outpost - The outpost for which to spawn the grunt enemies
  * @param bIsFinalWave - Whether the current wave is the final wave
  */
@@ -142,7 +155,17 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 	
 	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
 	{
-		Outpost->AddGruntEnemy(SpawnGruntEnemy(OutpostPatrolRoute));
+		float RouteSpawnDistance;
+		FTransform const SpawnTransform = GetGruntSpawnTransform(OutpostPatrolRoute, RouteSpawnDistance);
+		if (SpawnTransform.Equals(FTransform::Identity))
+		{
+			continue;
+		}
+		
+		Outpost->AddGruntEnemy(SpawnGruntEnemy(
+			SpawnTransform, 
+			RouteSpawnDistance, 
+			OutpostPatrolRoute));
 		SpawnAmount--;
 	}
  }

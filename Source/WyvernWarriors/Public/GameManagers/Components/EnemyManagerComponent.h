@@ -24,9 +24,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
 	void SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave);
 	
+	// Gets the spawn transform for a grunt
+	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
+	FTransform GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline);
+	
+	// Gets a route for the enemy to spawn on
+	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
+	AEnemyPatrolRoute* GetSpawnPatrolRoute();
+	
 	// Spawns a single grunt enemy at a random spawn point
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
-	AGruntEnemy* SpawnGruntEnemy(AEnemyPatrolRoute* SpecificPatrolRoute = nullptr);
+	AGruntEnemy* SpawnGruntEnemy(FTransform const SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route);
 	
 	// Spawns a boss enemy
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawnng")
@@ -75,7 +83,11 @@ private:
 	
 	// Minimum distance from player for spawning enemies
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
-	float MinimumPlayerSpawnDistance = 20000;
+	float MinimumPlayerSpawnDistance = 20000.f;
+	
+	// Minimum distance from nearest enemy for spawning enemies
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
+	float MinimumEnemySpawnDistance = 3000.f;
 	
 	// Array of enemy spawn points
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))

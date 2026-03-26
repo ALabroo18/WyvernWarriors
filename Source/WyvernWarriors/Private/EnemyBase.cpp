@@ -89,7 +89,7 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
 {
 	if (!ActorsToAvoid.IsEmpty())
 	{
-		FVector DirectionAwaySum;
+		FVector DirectionAwaySum = FVector::Zero();
 		for (const AActor* Enemy : ActorsToAvoid)
 		{
 			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
