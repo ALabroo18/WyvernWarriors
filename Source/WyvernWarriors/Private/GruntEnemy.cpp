@@ -29,7 +29,7 @@ AGruntEnemy::AGruntEnemy()
 }
 
 // Initializes enemy variables
-void AGruntEnemy::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
+void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
 	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute); // Call base class initialization
 
