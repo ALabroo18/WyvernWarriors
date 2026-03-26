@@ -5,7 +5,6 @@
 #include "Components/WidgetComponent.h"
 #include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManagers/GameModeLevel.h"
 #include "GameManagers/Components/EnemyManagerComponent.h"
@@ -136,26 +135,28 @@ void AGruntEnemy::DestroySelfEnemy()
 	Destroy(); // Destroy grunt enemy
 }
 
-// Rotates and moves grunt back towards patrol route spot
-void AGruntEnemy::ReturnToRoute(float DeltaTime)
+/* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.
+ * Check if grunt is on patrol route.
+ * @param DeltaTime - float that is time since last tick
+ */
+void AGruntEnemy::ReturnToRoute(float const DeltaTime)
 {
-	// Check spline component validity
 	if (!IsValid(SplineComponent))
 	{
 		return;
 	}
 
-	FVector FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
-	FRotator RotationTowardsSpot = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), FormerSpotOnRoute); // Get rotation to look at spot
-	RotateAndMove(RotationTowardsSpot, DeltaTime); // Rotate and move enemy
+	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
+	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
+	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);
 
-	SetOnPatrolRoute(); // Check and set on patrol route bool if necessary
+	CheckOnPatrolRoute();
 }
 
-// Sets grunt on patrol route if close enough
-void AGruntEnemy::SetOnPatrolRoute()
+/* Checks if grunt is on patrol route and sets relevant status
+ */
+void AGruntEnemy::CheckOnPatrolRoute()
 {	
-	// Return true if close enough to patrol route spot
 	if (FVector::DistSquared(GetActorLocation(), SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World)) < 2000 * 2000)
 	{
 		bOnRoute = true;
@@ -166,54 +167,20 @@ void AGruntEnemy::SetOnPatrolRoute()
 	}
 }
 
-// Move towards player character while avoiding nearby enemies
+/* Gets direction towards player than rotates and moves said direction.
+ * @param DeltaTime - float that is time since last tick
+ */
 void AGruntEnemy::ChasePlayerCharacter(float const DeltaTime)
 {
-	FVector DirectionAway = FVector::ZeroVector; // Direction away from all nearby enemies
-	
-	// Get direction away from nearby enemies if any
-	if(!NearbyEnemies.IsEmpty())
-	{
-		FVector DirectionAwaySum; // Sum of away directions to all nearby enemies
-
-		// Add all away directions together
-		for (const AGruntEnemy* Enemy : NearbyEnemies)
-		{
-			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
-			DirectionAwaySum += SingleDirection;
-		}
-		
-		DirectionAway = DirectionAwaySum / NearbyEnemies.Num(); // Get average of away directions
-	}
-	
-	FVector const DirectionToPlayer = (PlayerCharacter->GetActorLocation() - GetActorLocation()).GetSafeNormal(); // Get direction to player
-	FVector  const DirectionToMove = (DirectionToPlayer + DirectionAway).GetSafeNormal(); // Combine direction to player and direction away from enemies
-	FRotator DirectionToRotate = DirectionToMove.Rotation(); // Get rotation from movement direction
-	RotateAndMove(DirectionToRotate, DeltaTime); // Rotate and move using rotation
+	FVector DirectionToPlayer = (PlayerCharacter->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	RotateAndMove(DirectionToPlayer, DeltaTime, NearbyEnemies);
 }
 
-// Flee from the character until far enough
+/* Gets direction away from player than rotates and moves said direction.
+ * @param DeltaTime - float that is time since last tick
+ */
 void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 {
-	FVector DirectionAway = FVector::ZeroVector; // Direction away from all nearby enemies
-	
-	// Get direction away from nearby enemies if any
-	if(!NearbyEnemies.IsEmpty())
-	{
-		FVector DirectionAwaySum; // Sum of away directions to all nearby enemies
-
-		// Add all away directions together
-		for (const AGruntEnemy* Enemy : NearbyEnemies)
-		{
-			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
-			DirectionAwaySum += SingleDirection;
-		}
-		
-		DirectionAway = DirectionAwaySum / NearbyEnemies.Num(); // Get average of away directions
-	}
-	
-	FVector const DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal(); // Get direction to player
-	FVector  const DirectionToMove = (DirectionFromPlayer + DirectionAway).GetSafeNormal(); // Combine direction to player and direction away from enemies
-	FRotator DirectionToRotate = DirectionToMove.Rotation(); // Get rotation from movement direction
-	RotateAndMove(DirectionToRotate, DeltaTime); // Rotate and move using rotation
+	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
+	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
 }
