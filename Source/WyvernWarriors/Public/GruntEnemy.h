@@ -65,6 +65,9 @@ public:
 	// Flee from the character until far enough
 	void FleePlayerCharacter(float const DeltaTime);
 	
+	//
+	FVector AGruntEnemy::ChangeSpawnLocation();
+	
 
 private:
 	// Camera manager that is attached to player

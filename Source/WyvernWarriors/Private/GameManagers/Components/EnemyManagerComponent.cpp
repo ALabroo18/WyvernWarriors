@@ -102,14 +102,18 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(AEnemyPatrolRoute* Specific
 
 	FTransform const SpawnTransform(SpawnRotation, SpawnLocation, FVector::One()); // Set transform for the spawned enemy
 	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform); // Set up spawn for grunt enemy
-	
+	UE_LOG(LogTemp, Warning, TEXT("Spawning grunt enemy: %s"), *NewGruntEnemy->GetName());
 	// Check for new grunt validity
 	if (!IsValid(NewGruntEnemy))
 	{
 		return nullptr;
 	}
+	
+	// Incomplete
+	SpawnLocation += NewGruntEnemy->ChangeSpawnLocation() * MinimumEnemySpawnDistance;
 
 	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, SpecificPatrolRoute, bPatrolRouteSpecified); // Initialize the enemy on the route
+	UE_LOG(LogTemp, Warning, TEXT("Initializing grunt enemy: %s"), *NewGruntEnemy->GetName());
 	GruntEnemies.Add(NewGruntEnemy); // Add the new enemy to the managed array
 	SpecificPatrolRoute->ModifyEnemiesOnRoute(true); // Increment the enemy count on the patrol route
 	NewGruntEnemy->FinishSpawning(SpawnTransform); // Spawn the grunt enemy

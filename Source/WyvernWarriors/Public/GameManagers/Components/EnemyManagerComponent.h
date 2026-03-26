@@ -75,7 +75,11 @@ private:
 	
 	// Minimum distance from player for spawning enemies
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
-	float MinimumPlayerSpawnDistance = 20000;
+	float MinimumPlayerSpawnDistance = 20000.f;
+	
+	// Minimum distance from nearest enemy for spawning enemies
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
+	float MinimumEnemySpawnDistance = 3000.f;
 	
 	// Array of enemy spawn points
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))

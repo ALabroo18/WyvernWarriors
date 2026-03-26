@@ -184,3 +184,24 @@ void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
 	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
 }
+
+/* Rework
+ */ 
+FVector AGruntEnemy::ChangeSpawnLocation()
+{
+	DetectionSphere->GetOverlappingActors(NearbyEnemies, AGruntEnemy::StaticClass()); // Get overlapping actors of the same class and store in nearby enemies array
+	
+	if (NearbyEnemies.IsEmpty())
+	{
+		return FVector::Zero();
+	}
+	
+	FVector DirectionAway;
+	
+	for (const AActor* NearbyEnemy : NearbyEnemies)
+	{
+		DirectionAway += (GetActorLocation() - NearbyEnemy->GetActorLocation()).GetSafeNormal();
+	}
+	
+	return DirectionAway /= NearbyEnemies.Num();
+}
