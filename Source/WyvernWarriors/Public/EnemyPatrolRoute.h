@@ -23,6 +23,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
 	void ModifyEnemiesOnRoute(bool IncreaseNumber);
 	
+	// Sets the maximum amount of enemies allowed on patrol route
+	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
+	void SetMaxEnemiesOnRoute(int32 const MaxEnemies) { MaxEnemiesOnRoute = MaxEnemies; }
+	
+	// Gets the maximum amount of enemies allowed on patrol route 
+	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
+	int32 GetMaxEnemiesOnRoute() const {return MaxEnemiesOnRoute; }
+	
 	// Sets whether the patrol route is full
 	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
 	void SetRouteFull();

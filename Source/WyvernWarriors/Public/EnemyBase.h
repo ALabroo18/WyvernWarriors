@@ -52,8 +52,9 @@ public:
 	virtual void DestroySelfEnemy() {};
 
 protected:
-	// Rotates and moves the enemy with the specified rotation
-	void RotateAndMove(FRotator& Rotation, const float DeltaTime);
+	// Rotates and moves the enemy with the specified rotation, away from actors if provided
+	UFUNCTION(Category = "Movement")	
+	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
 	
 	// Reference to the player character
 	UPROPERTY()
