@@ -47,8 +47,8 @@ void AEnemyBase::MoveAlongSpline(float DeltaTime)
 	
 	DistanceAlongSpline += GetVelocity().Size()	 * DeltaTime; // Update distance along spline based on movement speed
 	
-	FRotator SplineRotation = SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new rotation on spline
-	RotateAndMove(SplineRotation, DeltaTime);
+	FVector SplineDirection = SplineComponent->GetDirectionAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new rotation on spline
+	RotateAndMove(SplineDirection, DeltaTime); // Rotate and move enemy along spline
 	
 	// Reset distance if end of spline reached
 	if (DistanceAlongSpline >= SplineComponent->GetSplineLength())
@@ -77,21 +77,42 @@ void AEnemyBase::ModifyCurrentHealth(float const Amount)
 	}
 }
 
-// Rotates and moves the enemy with the specified rotation
-void AEnemyBase::RotateAndMove(FRotator& Rotation, const float DeltaTime)
+/* Finds rotation based on input direction and direction away from input array of actors to avoid if there is any.
+ * Keeps rotation from moving enemy beneath 0 then converts to quaternion to use for interpolation. Gets difference
+ * between rotation quaternion and current quaternion to slow down speed when difference is large. Adds movement input
+ * based on speed.
+ * @param Direction - FVector reference of direction that enemy should move
+ * @param DeltaTime = float that is the amount of time since last tick
+ * @param ActorsToAvoid - Array of actors that the enemy should move away from, empty by default
+ */
+void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid)
 {
-	// Keep grunt from flying below 0
+	if (!ActorsToAvoid.IsEmpty())
+	{
+		FVector DirectionAwaySum = FVector::Zero();
+		for (const AActor* Enemy : ActorsToAvoid)
+		{
+			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
+			DirectionAwaySum += SingleDirection;
+		}
+		
+		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
+		Direction = (Direction + DirectionAway).GetSafeNormal();
+	}
+	
+	FRotator Rotation = Direction.Rotation();
+	
 	if (GetActorLocation().Z < .0f && Rotation.Pitch < .0f)
     {
     	Rotation.Pitch *= -1.f;
     }
 
-	const FQuat DesiredQuat = Rotation.Quaternion(); // Convert rotation to quaternion
-	const FQuat NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); // Set next quaternion
-	SetActorRotation(NextRotation); // Rotate enemy to next quaternion
+	FQuat const DesiredQuat = Rotation.Quaternion();
+	FQuat  const NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); 
+	SetActorRotation(NextRotation);
 	
-	const float RotationDifference = GetActorQuat().AngularDistance(DesiredQuat); // Get difference between current and next quaternions
-	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference)); // Set movement speed based on rotation difference
+	float const RotationDifference = GetActorQuat().AngularDistance(DesiredQuat);
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference));
 	
-	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true); // Move the enemy forward
+	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true);
 }
