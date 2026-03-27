@@ -30,6 +30,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Outpost")
 	AEnemyPatrolRoute* GetOutpostPatrolRoute() const { return OutpostPatrolRoute; }
 	
+	// Gets the grunt enemies currently at this outpost
+	UFUNCTION(BlueprintCallable, Category = "Enemies")
+	TArray<AGruntEnemy*> GetGruntEnemies() const { return GruntEnemies; }
+	
 	// Adds a grunt enemy to the outpost's managed array of grunt enemies 
 	UFUNCTION(BlueprintCallable, Category = "Enemies")
 	void AddGruntEnemy(AGruntEnemy* GruntEnemy) { GruntEnemies.Add(GruntEnemy); }
