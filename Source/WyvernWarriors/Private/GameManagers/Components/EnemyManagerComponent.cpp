@@ -61,10 +61,8 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 			DirectionAway += SpawnLocation - NearbyEnemy->GetActorLocation();
 		}
 		DirectionAway /= NearbyEnemies.Num();
-		UE_LOG(LogTemp, Warning, TEXT("DirectionAway: %s"), *DirectionAway.ToString());
 		SpawnLocation += DirectionAway.GetSafeNormal() * MinimumEnemySpawnDistance;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Adjusted SpawnLocation: %s"), *SpawnLocation.ToString());
 	return FTransform(SpawnRotation, SpawnLocation, FVector::One()); // Set transform for the spawned enemy
 }
 
@@ -107,21 +105,18 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  * @param SpawnTransform - transform that the grunt is spawned at
  * @param DistanceAlongSpline - distance along patrol route grunt is spawned with
  * @param Route - patrol route enemy is assigned to on spawn
- * @param bUseSpecificPatrolRoute - bool for if grunt route is random or predetermined
+ * @param bSpawnOnRoute - bool for if grunt spawns on route or not
  */
-AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(FTransform const SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route)
+AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
-	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform); // Set up spawn for grunt enemy
-	UE_LOG(LogTemp, Warning, TEXT("Spawning grunt enemy: %s"), *NewGruntEnemy->GetName());
+	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
 	if (!IsValid(NewGruntEnemy))
 	{
 		return nullptr;
 	}
 	
-	bool const bUseSpecificRoute = IsValid(Route);
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); 
 	
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bUseSpecificRoute); 
-	UE_LOG(LogTemp, Warning, TEXT("Initializing grunt enemy: %s"), *NewGruntEnemy->GetName());
 	GruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyEnemiesOnRoute(true);
 	
@@ -165,7 +160,8 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 		Outpost->AddGruntEnemy(SpawnGruntEnemy(
 			SpawnTransform, 
 			RouteSpawnDistance, 
-			OutpostPatrolRoute));
+			OutpostPatrolRoute,
+			true));
 		SpawnAmount--;
 	}
  }
