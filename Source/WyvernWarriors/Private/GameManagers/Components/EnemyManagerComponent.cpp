@@ -124,8 +124,8 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	return NewGruntEnemy;
 }
 
-/* Spawns grunt enemies on outpost patrol route, with amount depending on if final wave or not. Doesn't spawn if too
- * many grunts or if outpost patrol route is full.
+/* Spawns a random amount of grunt enemies on outpost patrol route depending on pre-existing amount and add enemies to
+ * outpost if not already there. Doesn't spawn if too many grunts or if outpost patrol route is full.
  * @param Outpost - The outpost for which to spawn the grunt enemies
  * @param bIsFinalWave - Whether the current wave is the final wave
  */
@@ -137,16 +137,13 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 	}
 	
 	AEnemyPatrolRoute* OutpostPatrolRoute = Outpost->GetOutpostPatrolRoute();
-	if (!IsValid(OutpostPatrolRoute))
+	if (!IsValid(OutpostPatrolRoute) || OutpostPatrolRoute->GetRouteFull())
 	{
 		return;
 	}
 	
-	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute();
-	
-	int32 SpawnAmount = bIsFinalWave
-		? FMath::Max(0, MaxGruntSpawn - OutpostPatrolRoute->GetNumEnemiesOnRoute())
-		: FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
+	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute() - OutpostPatrolRoute->GetNumEnemiesOnRoute();
+	int32 SpawnAmount = FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
 	
 	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
 	{
@@ -157,11 +154,16 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 			continue;
 		}
 		
-		Outpost->AddGruntEnemy(SpawnGruntEnemy(
+		AGruntEnemy* NewGrunt = SpawnGruntEnemy(
 			SpawnTransform, 
 			RouteSpawnDistance, 
 			OutpostPatrolRoute,
-			true));
+			true);
+		if (!Outpost->GetGruntEnemies().Contains(NewGrunt))
+		{
+			Outpost->AddGruntEnemy(NewGrunt);
+		}
+		
 		SpawnAmount--;
 	}
  }

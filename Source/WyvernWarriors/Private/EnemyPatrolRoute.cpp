@@ -12,7 +12,7 @@ AEnemyPatrolRoute::AEnemyPatrolRoute()
 void AEnemyPatrolRoute::ModifyEnemiesOnRoute(bool IncreaseNumber)
 {
 	// If trying to increase the number of enemies but the route is already full, do nothing
-	if (IncreaseNumber && !bIsRouteFull)
+	if (IncreaseNumber && bIsRouteFull)
 	{
 		return;
 	}
