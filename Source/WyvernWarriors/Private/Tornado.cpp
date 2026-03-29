@@ -2,6 +2,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraComponent.h"
 
 ATornado::ATornado()
 {
@@ -12,6 +13,7 @@ ATornado::ATornado()
 
     SplinePath = CreateDefaultSubobject<USplineComponent>(TEXT("SplinePath"));
     SplinePath->SetupAttachment(Root);
+    SplinePath->SetAbsolute(true, true, true);
 
     OuterZone = CreateDefaultSubobject<UCapsuleComponent>(TEXT("OuterZone"));
     OuterZone->SetupAttachment(Root);
@@ -31,6 +33,18 @@ void ATornado::BeginPlay()
 
     OuterZone->OnComponentBeginOverlap.AddDynamic(this, &ATornado::OnOuterZoneBeginOverlap);
     OuterZone->OnComponentEndOverlap.AddDynamic(this, &ATornado::OnOuterZoneEndOverlap);
+
+    // Force activate any Niagara components on the actor
+    TArray<UNiagaraComponent*> NiagaraComps;
+    GetComponents<UNiagaraComponent>(NiagaraComps);
+    for (UNiagaraComponent* NC : NiagaraComps)
+    {
+        if (NC)
+        {
+            NC->Activate(true);
+            UE_LOG(LogTemp, Warning, TEXT("Tornado: Activated Niagara component %s"), *NC->GetName());
+        }
+    }
 
     if (SplinePath->GetSplineLength() > 0.f)
     {
