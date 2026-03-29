@@ -25,6 +25,11 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 	}
 	else
 	{
+		if (EnemySpawnPoints.IsEmpty())
+		{
+			return FTransform::Identity;
+		}
+		
 		const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
 		if (!IsValid(SpawnPoint))
 		{
