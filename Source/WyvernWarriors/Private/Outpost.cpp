@@ -6,5 +6,9 @@ void AOutpost::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (!IsValid(OutpostPatrolRoute))
+	{
+		return;
+	}
 	OutpostPatrolRoute->SetMaxEnemiesOnRoute(MaxGruntOnRoute);
 }
