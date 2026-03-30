@@ -114,6 +114,11 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  */
 AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
+	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity))
+	{
+		return nullptr;
+	}
+	
 	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
 	if (!IsValid(NewGruntEnemy))
 	{
