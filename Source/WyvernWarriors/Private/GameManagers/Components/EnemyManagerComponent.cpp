@@ -106,7 +106,8 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
 }
 
 /* Defers spawning the grunt to initialize grunt, add to grunt array, and increase route grunt count. Spawns grunt at
- * specified transform after.
+ * specified transform after. Returns early is spawn transform is invalid, route is invalid, or if grunt spawn capacity
+ * has been reached.
  * @param SpawnTransform - transform that the grunt is spawned at
  * @param DistanceAlongSpline - distance along patrol route grunt is spawned with
  * @param Route - patrol route enemy is assigned to on spawn
@@ -114,6 +115,11 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  */
 AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
+	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity) || GruntEnemies.Num() >= GruntSpawnCapacity)
+	{
+		return nullptr;
+	}
+	
 	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
 	if (!IsValid(NewGruntEnemy))
 	{
