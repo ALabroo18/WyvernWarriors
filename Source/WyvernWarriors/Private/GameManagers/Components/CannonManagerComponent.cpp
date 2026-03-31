@@ -39,16 +39,21 @@ void UCannonManagerComponent::ChangeCannonsFireable(EForceFieldChange const Forc
 	}
 }
 
-/* Sets cannonballs and stacks as active and sets some cannons as able to fire at the boss at the start of the final
- * wave. Also sets the boss for the cannons to target. 
+/* Sets cannonballs and stacks as active and sets some cannons as able to fire at the boss on the final wave. Also sets
+ * the boss for the cannons to target. Sets up change cannons fireable to listen to boss force field change delegate.
+ * @param bIsFinalWave - bool for if the new wave is the final wave.
  */
 void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
 	if (bIsFinalWave)
 	{
-		SetCannonActivatables(true);
+		
 		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent();
-		SetCannonsBoss(EnemyManager->GetBossEnemy());
+		ABossEnemy* BossEnemy = EnemyManager->GetBossEnemy();
+		BossEnemy->OnForceFieldChange.AddDynamic(this, &UCannonManagerComponent::ChangeCannonsFireable);
+		
+		SetCannonActivatables(true);
+		SetCannonsBoss(BossEnemy);
 		SetMultipleCannonsLoadable(true, MaxActiveCannons);
 	}
 }
