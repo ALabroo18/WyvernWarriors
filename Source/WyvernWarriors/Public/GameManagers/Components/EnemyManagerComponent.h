@@ -58,10 +58,6 @@ private:
 	//
 	virtual void BeginPlay() override;
 	
-	// Reference to game mode
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Manager", meta = (AllowPrivateAccess = true))
-	AGameModeLevel* GameModeLevel;
-	
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;

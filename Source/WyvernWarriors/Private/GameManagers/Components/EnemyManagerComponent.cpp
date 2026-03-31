@@ -149,7 +149,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	NewGruntEnemy->FinishSpawning(SpawnTransform);
 	
 	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(NewGruntEnemy->Controller);
-	GruntEnemyController->StartBehaviorTree();
+	GruntEnemyController->StartBehaviorTree(); // Error here
 	
 	return NewGruntEnemy;
 }
@@ -252,16 +252,16 @@ void UEnemyManagerComponent::DestroyAllEnemies(bool const bIncludeBoss)
 		BossEnemy->Destroy();
 	}
 	
-	while (!GruntEnemies.IsEmpty())
+	while (!ActiveGruntEnemies.IsEmpty())
 	{
-		if (AGruntEnemy* Grunt = GruntEnemies.Last(); IsValid(Grunt))
+		if (AGruntEnemy* Grunt = ActiveGruntEnemies.Last(); IsValid(Grunt))
 		{
-			Grunt->Destroy();
+			Grunt->DestroySelfEnemy();
 		}
 	}
 }
 
-/* On the final wave, desory all enemies and spawn the boss.
+/* On the final wave, destroy all enemies and spawn the boss.
  */
 void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
