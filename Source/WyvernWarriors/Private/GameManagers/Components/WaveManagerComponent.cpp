@@ -132,6 +132,23 @@ void UWaveManagerComponent::RecaptureOutposts()
 	}
 }
 
+/*  Filters all enemy captured outposts into an array and returns a random outpost.
+ *  @return AOutpost - random enemy captured outpost.
+ */
+AOutpost* UWaveManagerComponent::GetRandomCapturedOutpost()
+{
+	TArray<AOutpost*> CapturedOutposts;
+	for (AOutpost* Outpost : Outposts)
+	{
+		if (IsValid(Outpost) && !Outpost->GetPlayerCapturedStatus())
+		{
+			CapturedOutposts.Add(Outpost);
+		}
+	}
+	
+	return CapturedOutposts[FMath::RandRange(0, CapturedOutposts.Num() - 1)]; 
+}
+
 // Resets the control meter to half its maximum value over time
 void UWaveManagerComponent::ResetControlMeter()
 {
