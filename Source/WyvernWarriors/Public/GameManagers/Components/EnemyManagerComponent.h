@@ -4,7 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "EnemyManagerComponent.generated.h"
 
-class AGameModeLevel;
 class AGruntEnemy;
 class AEnemySpawnPoint;
 class AEnemyPatrolRoute;
@@ -34,7 +33,7 @@ public:
 	
 	// Spawns a single grunt enemy at a random spawn point
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
-	AGruntEnemy* SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute);
+	AGruntEnemy* SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute, bool const bIgnoreSpawnCap);
 	
 	// Spawns a boss enemy
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawnng")
@@ -46,17 +45,13 @@ public:
 	
 	// Destroys all enemies (grunts, boss) that are alive
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void DestroyAllEnemies();
+	void DestroyAllEnemies(bool const bIncludeBoss);
 	
 	// Spawns boss on final wave
 	UFUNCTION(Blueprintable, Category = "Enemy Spawning")
 	void OnNewWave(bool const bIsFinalWave);
 
 private:
-	// Reference to game mode
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Manager", meta = (AllowPrivateAccess = true))
-	AGameModeLevel* GameModeLevel;
-	
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;

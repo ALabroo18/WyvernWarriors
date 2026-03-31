@@ -4,8 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "GameManagers/GameModeLevel.h"
 
-/* Disables tick and sets up components on actor.
- * Sets projectile to not automatically move
+/* Disables tick and sets up components on actor. Sets projectile to not automatically move.
  */
 ACannonball::ACannonball()
 {
@@ -55,7 +54,7 @@ float ACannonball::GetProjectileSpeed() const
 	return ProjectileMovement->GetMaxSpeed();
 }
 
-/* Sets the activeness of the cannonball, which includes visibility, collision, and movement
+/* Sets the activeness of the cannonball, which includes visibility, collision, movement, the highlight material.
  * @param bIsActive - Whether the cannonball should be active or not
  */
 void ACannonball::SetActiveness(bool const bIsActive)
@@ -63,9 +62,20 @@ void ACannonball::SetActiveness(bool const bIsActive)
 	SetActorHiddenInGame(!bIsActive);
 	SetActorEnableCollision(bIsActive);
 	
-	if (!bIsActive && ProjectileMovement->IsActive())
+	
+	if (!bIsActive)
 	{
-		ProjectileMovement->StopMovementImmediately();
+		if (ProjectileMovement->IsActive())
+		{
+			ProjectileMovement->StopMovementImmediately();
+		}
+	}
+	else
+	{
+		if (IsValid(StaticMesh))
+		{
+			StaticMesh->SetOverlayMaterial(HighlightMaterial);
+		}
 	}
 }
 
@@ -78,6 +88,10 @@ void ACannonball::ResetCannonball()
 	SetPickUpSphereCollision(true);
 	ProjectileMovement->StopMovementImmediately(); 
 	SetActorLocation(InitialLocation);
+	if (IsValid(StaticMesh))
+	{
+		StaticMesh->SetOverlayMaterial(HighlightMaterial);
+	}
 }
 
 /* Attaches cannonball to the specified socket on the Wyvern mesh and disables pickup sphere collision
@@ -88,6 +102,10 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 {
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
+	if (IsValid(StaticMesh))
+	{
+		StaticMesh->SetOverlayMaterial(nullptr);
+	}
 }
 
 /* Sets the cannonball as fired by rotating itself, activating its movement, and setting it as active

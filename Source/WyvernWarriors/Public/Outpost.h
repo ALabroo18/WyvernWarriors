@@ -57,4 +57,8 @@ private:
 	// Maximum amount of grunts on outpost patrol route
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Enemies", meta = (AllowPrivateAccess = true))
 	int32 MaxGruntOnRoute = 2;
+	
+	// Camera assigned to outpost
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = true))
+	ACameraActor* OutpostCamera;
 };
