@@ -4,7 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "EnemyManagerComponent.generated.h"
 
-class AGameModeLevel;
 class AGruntEnemy;
 class AEnemySpawnPoint;
 class AEnemyPatrolRoute;
@@ -46,7 +45,7 @@ public:
 	
 	// Destroys all enemies (grunts, boss) that are alive
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void DestroyAllEnemies();
+	void DestroyAllEnemies(bool const bIncludeBoss);
 	
 	// Spawns boss on final wave
 	UFUNCTION(Blueprintable, Category = "Enemy Spawning")

@@ -8,8 +8,6 @@
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyController.h"
 #include "Outpost.h"
-#include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/CannonManagerComponent.h"
 
 /* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity.
  */
@@ -244,34 +242,33 @@ void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
 	ActiveGruntEnemies.Remove(GruntEnemy); // Remove the grunt enemy from the managed array
 }
 
-// Destroys all enemies (grunts, boss) that are alive
-void UEnemyManagerComponent::DestroyAllEnemies()
+/* Destroys all valid enemies, including grunts and boss if included.
+ * @param bIncludeBoss - bool for is boss should be destroyed too.
+ */
+void UEnemyManagerComponent::DestroyAllEnemies(bool const bIncludeBoss)
 {
-	// Check for boss enemy and destroy if possible
-	if (!IsValid(BossEnemy))
+	if (bIncludeBoss && IsValid(BossEnemy))
 	{
 		BossEnemy->Destroy();
 	}
 	
-	// Check all grunt enemies in array and destroy if possible
-	for (AGruntEnemy* Grunt : ActiveGruntEnemies)
+	while (!GruntEnemies.IsEmpty())
 	{
-		if (!IsValid(Grunt))
+		if (AGruntEnemy* Grunt = GruntEnemies.Last(); IsValid(Grunt))
 		{
 			Grunt->Destroy();
 		}
 	}
 }
 
-// Spawns boss on final wave and set delegate
+/* On the final wave, desory all enemies and spawn the boss.
+ */
 void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
 	if (bIsFinalWave)
 	{
-		SpawnBoss(); // Spawn boss for final wave
-		GameModeLevel = Cast<AGameModeLevel>(GetOwner()); // Get reference to game mode level
-		UCannonManagerComponent* CannonManager = GameModeLevel->GetCannonManager(); // Get reference to cannon manager
-		BossEnemy->OnForceFieldChange.AddDynamic(CannonManager, &UCannonManagerComponent::ChangeCannonsFireable); // Set delegate for boss force field to change cannon ability to fire
+		DestroyAllEnemies(false);
+		SpawnBoss();
 	}
 }
 

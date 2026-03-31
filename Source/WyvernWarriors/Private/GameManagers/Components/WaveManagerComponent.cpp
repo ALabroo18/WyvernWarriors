@@ -193,7 +193,7 @@ void UWaveManagerComponent::ModifyControlMeterCurrent(float Amount, bool bCanByp
 	// Do not modify control meter if it is resetting
 	if (bResettingControlMeter)
 	{
-		if (bCanBypassReset == false)
+		if (!bCanBypassReset)
 		{
 			return;
 		}
