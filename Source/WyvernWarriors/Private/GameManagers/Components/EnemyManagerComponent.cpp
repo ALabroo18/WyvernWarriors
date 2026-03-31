@@ -113,9 +113,14 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  * @param Route - patrol route enemy is assigned to on spawn
  * @param bSpawnOnRoute - bool for if grunt spawns on route or not
  */
-AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
+AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute, bool const bIgnoreSpawnCap)
 {
-	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity) || GruntEnemies.Num() >= GruntSpawnCapacity)
+	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity))
+	{
+		return nullptr;
+	}
+	
+	if (GruntEnemies.Num() >= GruntSpawnCapacity && !bIgnoreSpawnCap)
 	{
 		return nullptr;
 	}
@@ -169,7 +174,8 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 			SpawnTransform, 
 			RouteSpawnDistance, 
 			OutpostPatrolRoute,
-			true);
+			true,
+			false);
 		if (!Outpost->GetGruntEnemies().Contains(NewGrunt))
 		{
 			Outpost->AddGruntEnemy(NewGrunt);

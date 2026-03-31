@@ -66,4 +66,8 @@ private:
 	// Initial location of the cannonball for resetting after use
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cannonball", meta = (AllowPrivateAccess = true))
 	FVector InitialLocation;
+	
+	// Material used to indicate location
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannonball", meta = (AllowPrivateAccess = true))
+	UMaterial* HighlightMaterial;
 };
