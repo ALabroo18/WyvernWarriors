@@ -4,8 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "GameManagers/GameModeLevel.h"
 
-/* Disables tick and sets up components on actor.
- * Sets projectile to not automatically move
+/* Disables tick and sets up components on actor. Sets projectile to not automatically move and highlight material.
  */
 ACannonball::ACannonball()
 {
@@ -16,6 +15,7 @@ ACannonball::ACannonball()
 	
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>("StaticMesh");
 	StaticMesh->SetupAttachment(RootComponent);
+	StaticMesh->SetOverlayMaterial(HighlightMaterial);
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovement");
 	ProjectileMovement->bAutoActivate = false;

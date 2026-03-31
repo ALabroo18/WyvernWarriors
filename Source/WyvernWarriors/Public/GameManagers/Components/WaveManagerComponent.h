@@ -30,8 +30,12 @@ public:
 	void NewWave();
 	
 	// Recaptures outposts
-	UFUNCTION(BlueprintCallable, Category = "Wave")
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
 	void RecaptureOutposts(); 
+	
+	// Returns a random captured outpost
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
+	AOutpost* GetRandomCapturedOutpost();
 	
 	// Resets the control meter to half its maximum value over time
 	UFUNCTION(BlueprintCallable, Category = "Control Meter")
@@ -58,7 +62,7 @@ private:
 	bool bIsFinalWave = false; 
 	
 	// Array of outposts in the level
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Wave", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Outpost", meta = (AllowPrivateAccess = true))
 	TArray<AOutpost*> Outposts;
 	
 	// Amount to decrease control meter when resetting
