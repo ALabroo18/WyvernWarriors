@@ -17,7 +17,7 @@ AGruntEnemy::AGruntEnemy()
 {
 	// Create and configure attack projectile spawn point
 	AttackProjectileSpawn = CreateDefaultSubobject<UArrowComponent>(TEXT("AttackProjectileSpawn"));
-	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tounge1Socket"));
+	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tongue1Socket"));
 	
 	// Create and configure detection sphere
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
@@ -112,17 +112,17 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 void AGruntEnemy::DestroySelfEnemy()
 {
 	// Get reference to the game mode
-	AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (!IsValid(GameMode))
 	{
 		return;
 	}
 
 	// Get reference to the enemy management component
-	UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent();
-	if (IsValid(EnemyManagementComponent))
+	if (UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent(); IsValid(EnemyManagementComponent))
 	{
-		EnemyManagementComponent->RemoveGruntEnemy(this); // Notify enemy management component of destruction
+		EnemyManagementComponent->RemoveActiveGruntEnemy(this); // Notify enemy management component of destruction
+		EnemyManagementComponent->AddInactiveGruntEnemy(this); // Add self to inactive enemy queue
 	}
 
 	// Remove enemy from patrol route if valid
@@ -130,14 +130,6 @@ void AGruntEnemy::DestroySelfEnemy()
 	{
 		PatrolRoute->ModifyEnemiesOnRoute(false); // Remove enemy from patrol route
 	}
-	
-	// do something with egg
-	if (bIsEggThief)
-	{
-		// do something with egg
-	}
-	
-	Destroy(); // Destroy grunt enemy
 }
 
 /* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.

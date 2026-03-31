@@ -40,9 +40,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawnng")
 	void SpawnBoss();
 	
-	// Removes a grunt enemy from management
+	// Removes a grunt enemy from the active grunt array
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void RemoveGruntEnemy(AGruntEnemy* GruntEnemy);
+	void RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy);
 	
 	// Destroys all enemies (grunts, boss) that are alive
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
@@ -51,8 +51,14 @@ public:
 	// Spawns boss on final wave
 	UFUNCTION(Blueprintable, Category = "Enemy Spawning")
 	void OnNewWave(bool const bIsFinalWave);
+	
+	// Adds a grunt into the inactive grunt queue
+	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Enqueue(GruntEnemy); }
 
 private:
+	//
+	virtual void BeginPlay() override;
+	
 	// Reference to game mode
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Manager", meta = (AllowPrivateAccess = true))
 	AGameModeLevel* GameModeLevel;
@@ -61,9 +67,12 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;
 	
-	// Array of grunt enemies managed by this component
+	// Array of active grunt enemies 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
-	TArray<AGruntEnemy*> GruntEnemies;
+	TArray<AGruntEnemy*> ActiveGruntEnemies;
+	
+	// Array of inactive grunt enemies
+	TQueue<AGruntEnemy*> InactiveGruntEnemies;
 	
 	// Reference to the boss enemy
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))

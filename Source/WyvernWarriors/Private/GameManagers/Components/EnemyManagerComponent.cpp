@@ -6,9 +6,23 @@
 #include "BossEnemy.h"
 #include "EnemySpawnPoint.h"
 #include "EnemyPatrolRoute.h"
+#include "GruntEnemyController.h"
 #include "Outpost.h"
 #include "GameManagers/GameModeLevel.h"
 #include "GameManagers/Components/CannonManagerComponent.h"
+
+/* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity.
+ */
+void UEnemyManagerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	for (int i = 0; i < GruntSpawnCapacity; i++)
+	{
+		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>();
+		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
+	}
+}
 
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
 FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
@@ -120,23 +134,25 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 		return nullptr;
 	}
 	
-	if (GruntEnemies.Num() >= GruntSpawnCapacity && !bIgnoreSpawnCap)
+	AGruntEnemy* NewGruntEnemy;
+	if (bIgnoreSpawnCap)
 	{
-		return nullptr;
+		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
+	}
+	else if (InactiveGruntEnemies.Dequeue(NewGruntEnemy); !IsValid(NewGruntEnemy))
+	{
+		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
 	}
 	
-	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
-	if (!IsValid(NewGruntEnemy))
-	{
-		return nullptr;
-	}
-	
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); 
-	
-	GruntEnemies.Add(NewGruntEnemy);
+	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyEnemiesOnRoute(true);
 	
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); 
 	NewGruntEnemy->FinishSpawning(SpawnTransform);
+	
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(NewGruntEnemy->Controller);
+	GruntEnemyController->StartBehaviorTree();
+	
 	return NewGruntEnemy;
 }
 
@@ -147,7 +163,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
  */
 void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
 {
-	if (GruntEnemies.Num() >= GruntSpawnCapacity)
+	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity)
 	{
 		return;
 	}
@@ -218,15 +234,14 @@ void UEnemyManagerComponent::SpawnBoss()
 }
 
 // Removes a grunt enemy from management
-void UEnemyManagerComponent::RemoveGruntEnemy(AGruntEnemy* GruntEnemy)
+void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
 {
-	// Ensure the grunt enemy is valid
 	if (!IsValid(GruntEnemy))
 	{
 		return;
 	}
 
-	GruntEnemies.Remove(GruntEnemy); // Remove the grunt enemy from the managed array
+	ActiveGruntEnemies.Remove(GruntEnemy); // Remove the grunt enemy from the managed array
 }
 
 // Destroys all enemies (grunts, boss) that are alive
@@ -239,7 +254,7 @@ void UEnemyManagerComponent::DestroyAllEnemies()
 	}
 	
 	// Check all grunt enemies in array and destroy if possible
-	for (AGruntEnemy* Grunt : GruntEnemies)
+	for (AGruntEnemy* Grunt : ActiveGruntEnemies)
 	{
 		if (!IsValid(Grunt))
 		{
@@ -259,3 +274,5 @@ void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 		BossEnemy->OnForceFieldChange.AddDynamic(CannonManager, &UCannonManagerComponent::ChangeCannonsFireable); // Set delegate for boss force field to change cannon ability to fire
 	}
 }
+
+

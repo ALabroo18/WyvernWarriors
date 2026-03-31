@@ -82,11 +82,11 @@ protected:
 	
 	// Patrol route for to get spline from
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = true))
-	AEnemyPatrolRoute* PatrolRoute; 
+	AEnemyPatrolRoute* PatrolRoute = nullptr; 
 	
 	// Spline component for enemy movement
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
-	USplineComponent* SplineComponent;
+	USplineComponent* SplineComponent = nullptr;
 	
 	// Max health of the enemy
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health", meta = (AllowPrivateAccess = true))
