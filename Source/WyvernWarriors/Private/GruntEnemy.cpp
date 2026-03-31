@@ -31,6 +31,11 @@ AGruntEnemy::AGruntEnemy()
 // Initializes enemy variables
 void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
+	if (!IsValid(Route))
+	{
+		DestroySelfEnemy();
+	}
+	
 	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute); // Call base class initialization
 
 	// Start moving along the route if spawned on it
