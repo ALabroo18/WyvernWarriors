@@ -34,7 +34,7 @@ public:
 	
 	// Spawns a single grunt enemy at a random spawn point
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
-	AGruntEnemy* SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool bSpawnOnRoute);
+	AGruntEnemy* SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute, bool const bIgnoreSpawnCap);
 	
 	// Spawns a boss enemy
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawnng")
