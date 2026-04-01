@@ -30,24 +30,20 @@ AGruntEnemy::AGruntEnemy()
 	HealthBarWidget->SetupAttachment(SkeletalMesh);
 }
 
-// Initializes enemy variables
+/* Sets health bar fill percent and on route variable of grunt enemy.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
-	if (!IsValid(Route))
-	{
-		DestroySelfEnemy();
-	}
+	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute);
 	
-	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute); // Call base class initialization
-
-	// Start moving along the route if spawned on it
-	if (bSpawnOnRoute)
-	{
-		bOnRoute = true;
-	}
+	SetHealthBarPercent();
+	bOnRoute = bSpawnOnRoute;
 }
 
-/* Sets up mesh dyanmic material and gets references to player character and camera.
+/* Sets up mesh dynamic material and gets references to player character and camera.
  */
 void AGruntEnemy::BeginPlay()
 {
@@ -56,14 +52,19 @@ void AGruntEnemy::BeginPlay()
 	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); 
 }
 
-/*
+/* Toggles the grunt as being active or inactive by setting collisions and movement speed. Also toggles tick and
+ * visibility of grunt enemy.
+ * @param bIsActive - whether the grunt enemy is being made active or inactive
  */
 void AGruntEnemy::ToggleGruntEnemy(bool const bIsActive)
 {
 	if (bIsActive)
 	{
-		CurrentHealth = MaxHealth;
-		SetHealthBarPercent();
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		
+		FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	}
 	else
 	{
@@ -75,6 +76,7 @@ void AGruntEnemy::ToggleGruntEnemy(bool const bIsActive)
 		FloatingPawnMovement->StopMovementImmediately();
 	}
 	
+	SetActorTickEnabled(bIsActive);
 	SetActorHiddenInGame(!bIsActive);
 }
 
@@ -133,28 +135,30 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 	}
 }
 
-// Destroys the grunt enemy actor after removing references
+/* Unposses controller from self then tells enemy manager to remove grunt enemy from active array. Subtracts itself
+ * from patrol route count then toggles self to become inactive.
+ */
 void AGruntEnemy::DestroySelfEnemy()
 {
-	// Get reference to the game mode
 	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (!IsValid(GameMode))
 	{
 		return;
 	}
-
-	// Get reference to the enemy management component
+	
+	GetController()->UnPossess();
+	
 	if (UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent(); IsValid(EnemyManagementComponent))
 	{
-		EnemyManagementComponent->RemoveActiveGruntEnemy(this); // Notify enemy management component of destruction
-		EnemyManagementComponent->AddInactiveGruntEnemy(this); // Add self to inactive enemy queue
+		EnemyManagementComponent->RemoveActiveGruntEnemy(this);
 	}
-
-	// Remove enemy from patrol route if valid
+	
 	if (IsValid(PatrolRoute))
 	{
-		PatrolRoute->ModifyEnemiesOnRoute(false); // Remove enemy from patrol route
+		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
+	
+	ToggleGruntEnemy(false);
 }
 
 /* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.

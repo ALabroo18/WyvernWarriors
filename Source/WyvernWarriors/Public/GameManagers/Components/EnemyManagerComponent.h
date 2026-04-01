@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EnemyManagerComponent.generated.h"
 
+class AGruntEnemyController;
 class AGruntEnemy;
 class AEnemySpawnPoint;
 class AEnemyPatrolRoute;
@@ -57,6 +58,9 @@ public:
 	// Adds a grunt into the inactive grunt queue
 	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Enqueue(GruntEnemy); }
 
+	// Adds a  controller into the inactive grunt controller queue
+	void AddInactiveGruntEnemyController(AGruntEnemyController* GruntEnemyController) { InactiveGruntEnemyControllers.Enqueue(GruntEnemyController); }
+
 private:
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
@@ -66,8 +70,11 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
 	TArray<AGruntEnemy*> ActiveGruntEnemies;
 	
-	// Array of inactive grunt enemies
+	// Queue of inactive grunt enemies
 	TQueue<AGruntEnemy*> InactiveGruntEnemies;
+	
+	// Queue of inactive grunt enemy controllers
+	TQueue<AGruntEnemyController*> InactiveGruntEnemyControllers;
 	
 	// Reference to the boss enemy
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))

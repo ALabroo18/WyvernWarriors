@@ -22,9 +22,6 @@ public:
 	// Called when the controller possesses a pawn
 	virtual void OnPossess(APawn* InPawn) override;
 
-	//
-	virtual void StartBehaviorTree();
-
 private:
 	// Blackboard component for behavior tree
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))

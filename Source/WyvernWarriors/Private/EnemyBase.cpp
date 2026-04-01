@@ -49,12 +49,23 @@ void AEnemyBase::MoveAlongSpline(float DeltaTime)
 	}
 }
 
-// Initializes the enemy on the patrol route at a specific distance
+/* Assigns the patrol route, spline component, distance along spline, and current health of the enemy. Returns early
+ * if patrol route is invalid.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AEnemyBase::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
-	PatrolRoute = Route; // Assign the patrol route
-	SplineComponent = PatrolRoute->GetSplineComponent(); // Get the spline component from the patrol route
-	DistanceAlongSpline = InitialDistance; // Set the initial distance along the route
+	if (!IsValid(Route))
+	{
+		return;
+	}
+	
+	PatrolRoute = Route;
+	SplineComponent = PatrolRoute->GetSplineComponent();
+	DistanceAlongSpline = InitialDistance;
+	CurrentHealth = MaxHealth;
 }
 
 // Modifies the enemy's health by a specified amount

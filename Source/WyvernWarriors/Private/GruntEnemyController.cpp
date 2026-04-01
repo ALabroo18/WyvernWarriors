@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "GruntEnemyController.h"
 #include "GruntEnemy.h"
 #include "BehaviorTree/BehaviorTree.h"
@@ -43,9 +40,6 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 
 	GruntBlackboardComponent->SetValueAsBool(FName(TEXT("bOnPatrolRoute")), ControlledGruntEnemy->GetOnPatrolRoute()); // Set the controlled grunt enemy in the blackboard
 	GruntBlackboardComponent->SetValueAsObject(FName(TEXT("PlayerWyvern")), UGameplayStatics::GetPlayerPawn(GetWorld(), 0)); // Set the controlled grunt enemy in the blackboard
-}
-
-void AGruntEnemyController::StartBehaviorTree()
-{
+	
 	RunBehaviorTree(GruntBehaviorTree); // Start the behavior tree for AI logic
 }

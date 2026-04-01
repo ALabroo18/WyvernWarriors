@@ -117,28 +117,31 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 {
 	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid spawn transform or route for grunt enemy spawning."));
 		return nullptr;
 	}
-	
+
 	AGruntEnemy* NewGruntEnemy;
-	if (bIgnoreSpawnCap)
+	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy) || bIgnoreSpawnCap || !IsValid(NewGruntEnemy))
 	{
 		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
+		NewGruntEnemy->FinishSpawning(SpawnTransform);
 	}
-	else if (InactiveGruntEnemies.Dequeue(NewGruntEnemy); !IsValid(NewGruntEnemy))
+	else
 	{
-		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
+		NewGruntEnemy->SetActorTransform(SpawnTransform);
 	}
-	
+
 	ActiveGruntEnemies.Add(NewGruntEnemy);
-	Route->ModifyEnemiesOnRoute(true);
-	
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); 
-	NewGruntEnemy->FinishSpawning(SpawnTransform);
-	
-	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(NewGruntEnemy->Controller);
-	// GruntEnemyController->StartBehaviorTree(); // Error here
-	
+	Route->ModifyRouteEnemyCount(true);
+
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute);
+	NewGruntEnemy->ToggleGruntEnemy(true);
+
+	AGruntEnemyController* NewGruntEnemyController;
+	InactiveGruntEnemyControllers.Dequeue(NewGruntEnemyController);
+	NewGruntEnemyController->Possess(NewGruntEnemy);
+
 	return NewGruntEnemy;
 }
 
@@ -152,6 +155,7 @@ void UEnemyManagerComponent::SetupEnemyManager()
 		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyToSpawn);
 		NewGruntEnemy->ToggleGruntEnemy(false);
 		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
+		InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(NewGruntEnemy->GetController()));
 	}
 	
 	TArray<AActor*> TempActors; // Temporary array to store actors to add to arrays
@@ -265,7 +269,9 @@ void UEnemyManagerComponent::SpawnBoss()
 	BossEnemy->FinishSpawning(SpawnTransform); // Spawn boss after setting variables
 }
 
-// Removes a grunt enemy from management
+/* Removes grunt enemy from active array, then adds grunt enemy and its controller to respective inactive queues.
+ * @param GruntEnemy - grunt enemy that is turning inactive
+ */
 void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
 {
 	if (!IsValid(GruntEnemy))
@@ -273,7 +279,9 @@ void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
 		return;
 	}
 
-	ActiveGruntEnemies.Remove(GruntEnemy); // Remove the grunt enemy from the managed array
+	ActiveGruntEnemies.Remove(GruntEnemy);
+	InactiveGruntEnemies.Enqueue(GruntEnemy);
+	InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(GruntEnemy->GetController()));
 }
 
 /* Destroys all valid enemies, including grunts and boss if included.
