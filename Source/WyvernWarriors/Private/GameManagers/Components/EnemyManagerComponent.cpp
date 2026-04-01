@@ -142,7 +142,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	InactiveGruntEnemyControllers.Dequeue(NewGruntEnemyController);
 	NewGruntEnemyController->Possess(NewGruntEnemy);
 
-	return NewGruntEnemy;
+	return NewGruntEnemy; // Issue with respawning enemies during runtime
 }
 
 /* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity. Gets boss patrol route,
