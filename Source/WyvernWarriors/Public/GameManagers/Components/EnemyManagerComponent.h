@@ -16,6 +16,9 @@ class WYVERNWARRIORS_API UEnemyManagerComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+	// Sets up enemy manager
+	void SetupEnemyManager();
+	
 	// Getter for the boss
 	ABossEnemy* GetBossEnemy() const {return BossEnemy; }
 	
@@ -55,9 +58,6 @@ public:
 	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Enqueue(GruntEnemy); }
 
 private:
-	//
-	virtual void BeginPlay() override;
-	
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;

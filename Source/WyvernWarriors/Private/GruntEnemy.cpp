@@ -10,6 +10,8 @@
 #include "GameManagers/Components/EnemyManagerComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 
 
 // Creates components on enemy and sets attachment
@@ -45,12 +47,35 @@ void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute
 	}
 }
 
-// Sets enemy variables when spawning 
-void AGruntEnemy::SetVariables()
+/* Sets up mesh dyanmic material and gets references to player character and camera.
+ */
+void AGruntEnemy::BeginPlay()
 {
-	Super::SetVariables();
-	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0)); // Create dynamic material instance for visual effects
-	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); // Get player camera manager
+	Super::BeginPlay();
+	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0));
+	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); 
+}
+
+/*
+ */
+void AGruntEnemy::ToggleGruntEnemy(bool const bIsActive)
+{
+	if (bIsActive)
+	{
+		CurrentHealth = MaxHealth;
+		SetHealthBarPercent();
+	}
+	else
+	{
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		
+		FloatingPawnMovement->MaxSpeed = 0.f;
+		FloatingPawnMovement->StopMovementImmediately();
+	}
+	
+	SetActorHiddenInGame(!bIsActive);
 }
 
 // Executes the attack on the player by spawning a projectile

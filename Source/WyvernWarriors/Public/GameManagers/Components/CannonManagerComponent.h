@@ -41,7 +41,7 @@ public:
 	
 	// Sets the starting variables for cannon management
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetStartVariables();
+	void SetupCannonManager();
 
 private:
 	// Set a random cannon as able to fire at the boss

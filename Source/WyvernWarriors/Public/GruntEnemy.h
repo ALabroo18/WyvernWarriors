@@ -24,8 +24,8 @@ public:
 	// Sets default values for this pawn's properties
 	AGruntEnemy();
 	
-	// Sets enemy variables when spawning 
-	virtual void SetVariables() override;
+	// Toggles grunt enemy to be on/off
+	void ToggleGruntEnemy(bool const bIsActive);
 	
 	// Initializes the enemy on the patrol route at a specific distance
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute) override;
@@ -64,9 +64,11 @@ public:
 	
 	// Flee from the character until far enough
 	void FleePlayerCharacter(float const DeltaTime);
-	
 
 private:
+	// Sets grunt variables on game start
+	virtual void BeginPlay() override;
+	
 	// Camera manager that is attached to player
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
 	APlayerCameraManager* PlayerCameraManager;

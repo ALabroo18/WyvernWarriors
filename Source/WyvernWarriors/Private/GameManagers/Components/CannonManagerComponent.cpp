@@ -59,7 +59,7 @@ void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 }
 
 // Sets the starting variables for cannon management
-void UCannonManagerComponent::SetStartVariables()
+void UCannonManagerComponent::SetupCannonManager()
 {
 	TArray<AActor*> TempActors; // Temporary array to store actors to add to arrays
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACannonballStack::StaticClass(), TempActors); // Get all cannonball stacks in level

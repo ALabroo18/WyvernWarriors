@@ -16,19 +16,20 @@ AGameModeLevel::AGameModeLevel()
 	EventBus = CreateDefaultSubobject<UEventBusComponent>("EventBus"); // Create event bus
 }
 
-// Set references and variables
+/* Get reference to game state and set up game manager components. End by starting first wave.
+ */
 void AGameModeLevel::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Get game state level
+	
 	GameStateLevel = Cast<AGameStateLevel>(GetWorld()->GetGameState());
 	if (!IsValid(GameStateLevel))
 	{
 		return;
 	}
 
-	CannonManager->SetStartVariables(); // Set starting variables for cannon manager
-	WaveManager->SetStartVariables(); // Set starting variables for wave manager
-	WaveManager->NewWave(); // Start first wave
+	CannonManager->SetupCannonManager();
+	EnemyManager->SetupEnemyManager();
+	WaveManager->SetupWaveManager();
+	WaveManager->NewWave();
 }

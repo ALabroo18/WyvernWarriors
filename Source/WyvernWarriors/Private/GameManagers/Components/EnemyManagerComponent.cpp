@@ -9,18 +9,6 @@
 #include "GruntEnemyController.h"
 #include "Outpost.h"
 
-/* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity.
- */
-void UEnemyManagerComponent::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	for (int i = 0; i < GruntSpawnCapacity; i++)
-	{
-		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>();
-		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
-	}
-}
 
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
 FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
@@ -149,9 +137,55 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	NewGruntEnemy->FinishSpawning(SpawnTransform);
 	
 	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(NewGruntEnemy->Controller);
-	GruntEnemyController->StartBehaviorTree(); // Error here
+	// GruntEnemyController->StartBehaviorTree(); // Error here
 	
 	return NewGruntEnemy;
+}
+
+/* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity. Gets boss patrol route,
+ * grunt patrol routes, and grunt spawn points.
+ */
+void UEnemyManagerComponent::SetupEnemyManager()
+{
+	for (int i = 0; i < GruntSpawnCapacity; i++)
+	{
+		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyToSpawn);
+		NewGruntEnemy->ToggleGruntEnemy(false);
+		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
+	}
+	
+	TArray<AActor*> TempActors; // Temporary array to store actors to add to arrays
+	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), AEnemyPatrolRoute::StaticClass(), "Grunt", TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			BossPatrolRoute = Cast<AEnemyPatrolRoute>(TempActor);
+		}
+	}
+	
+	TempActors.Empty();
+	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), AEnemyPatrolRoute::StaticClass(), "Boss", TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			EnemyPatrolRoutes.Add(Cast<AEnemyPatrolRoute>(TempActor));
+		}
+	}
+	
+	TempActors.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemySpawnPoint::StaticClass(), TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			EnemySpawnPoints.Add(Cast<AEnemySpawnPoint>(TempActor));
+		}
+	}
 }
 
 /* Spawns a random amount of grunt enemies on outpost patrol route depending on pre-existing amount and add enemies to

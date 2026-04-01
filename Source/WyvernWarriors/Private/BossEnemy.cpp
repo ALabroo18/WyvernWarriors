@@ -12,6 +12,18 @@ class AEnemyPatrolRoute;
 
 #define PLAYER_COLLISION_CHANNEL ECollisionChannel::ECC_GameTraceChannel1
 
+/* Sets up health, movement speed, and reference to player.
+ */
+void ABossEnemy::BeginPlay()
+{
+	Super::BeginPlay();
+	CurrentHealth = MaxHealth;
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
+	RestoreForceField();
+	
+	// Move rest of boss begin play here
+}
+
 // Moves the enemy along the spline path
 void ABossEnemy::MoveAlongSpline(float const DeltaTime)
 {

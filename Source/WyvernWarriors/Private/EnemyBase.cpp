@@ -28,14 +28,6 @@ AEnemyBase::AEnemyBase()
 	FloatingPawnMovement->UpdatedComponent = RootComponent;
 }
 
-// Sets enemy variables when spawning 
-void AEnemyBase::SetVariables()
-{
-	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
-	CurrentHealth = MaxHealth; // Set current health to maximum health
-	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed; // Set movement speed to max
-}
-
 // Moves the enemy along the spline path
 void AEnemyBase::MoveAlongSpline(float DeltaTime)
 {
@@ -75,6 +67,15 @@ void AEnemyBase::ModifyCurrentHealth(float const Amount)
 	{
 		DestroySelfEnemy();
 	}
+}
+
+/* Gets reference to player character
+ */
+void AEnemyBase::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
 }
 
 /* Finds rotation based on input direction and direction away from input array of actors to avoid if there is any.

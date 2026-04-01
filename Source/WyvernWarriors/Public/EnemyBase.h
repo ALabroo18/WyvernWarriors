@@ -27,10 +27,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	virtual void MoveAlongSpline(float DeltaTime);
 	
-	// Sets enemy variables when spawning 
-	UFUNCTION(BlueprintCallable, Category = "Initialization")
-	virtual void SetVariables();
-	
 	// Initializes enemy variables before spawning
 	UFUNCTION(BlueprintCallable, Category = "Initialization")
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute);
@@ -52,6 +48,9 @@ public:
 	virtual void DestroySelfEnemy() {};
 
 protected:
+	// Sets up va
+	virtual void BeginPlay() override;
+	
 	// Rotates and moves the enemy with the specified rotation, away from actors if provided
 	UFUNCTION(Category = "Movement")	
 	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
