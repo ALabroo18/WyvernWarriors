@@ -10,6 +10,9 @@
 #include "GameManagers/Components/EnemyManagerComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
+#include "GruntEnemyController.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 
 
 // Creates components on enemy and sets attachment
@@ -17,7 +20,7 @@ AGruntEnemy::AGruntEnemy()
 {
 	// Create and configure attack projectile spawn point
 	AttackProjectileSpawn = CreateDefaultSubobject<UArrowComponent>(TEXT("AttackProjectileSpawn"));
-	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tounge1Socket"));
+	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tongue1Socket"));
 	
 	// Create and configure detection sphere
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
@@ -28,29 +31,66 @@ AGruntEnemy::AGruntEnemy()
 	HealthBarWidget->SetupAttachment(SkeletalMesh);
 }
 
-// Initializes enemy variables
+/* Sets health bar fill percent and on route variable of grunt enemy.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
-	if (!IsValid(Route))
-	{
-		DestroySelfEnemy();
-	}
+	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute);
 	
-	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute); // Call base class initialization
-
-	// Start moving along the route if spawned on it
-	if (bSpawnOnRoute)
-	{
-		bOnRoute = true;
-	}
+	SetHealthBarPercent();
+	bOnRoute = bSpawnOnRoute;
 }
 
-// Sets enemy variables when spawning 
-void AGruntEnemy::SetVariables()
+/* Sets up mesh dynamic material and gets references to player character and camera.
+ */
+void AGruntEnemy::BeginPlay()
 {
-	Super::SetVariables();
-	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0)); // Create dynamic material instance for visual effects
-	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); // Get player camera manager
+	Super::BeginPlay();
+	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0));
+	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); 
+}
+
+/* Toggles the grunt as being active or inactive by setting collisions and movement speed. Also toggles tick and
+ * visibility of grunt enemy.
+ * @param bIsActive - whether the grunt enemy is being made active or inactive
+ */
+AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
+{
+	SetActorTickEnabled(bToggleActive);
+	SetActorHiddenInGame(!bToggleActive);
+	bIsActive = bToggleActive;
+	
+	if (bToggleActive)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Enabling %s grunt"), *this->GetName());
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		
+		FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
+		return nullptr;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Disabling %s grunt"), *this->GetName());
+	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	FloatingPawnMovement->MaxSpeed = 0.f;
+	FloatingPawnMovement->StopMovementImmediately();
+	
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
+		return nullptr;
+	}
+	GruntEnemyController->UnPossess();
+	return GruntEnemyController;
+
 }
 
 // Executes the attack on the player by spawning a projectile
@@ -108,36 +148,28 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 	}
 }
 
-// Destroys the grunt enemy actor after removing references
+/* Unposses controller from self then tells enemy manager to remove grunt enemy from active array. Subtracts itself
+ * from patrol route count then toggles self to become inactive.
+ */
 void AGruntEnemy::DestroySelfEnemy()
 {
-	// Get reference to the game mode
-	AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (!IsValid(GameMode))
 	{
 		return;
 	}
-
-	// Get reference to the enemy management component
-	UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent();
-	if (IsValid(EnemyManagementComponent))
+	
+	if (UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent(); IsValid(EnemyManagementComponent))
 	{
-		EnemyManagementComponent->RemoveGruntEnemy(this); // Notify enemy management component of destruction
+		EnemyManagementComponent->RemoveActiveGruntEnemy(this);
 	}
-
-	// Remove enemy from patrol route if valid
+	
 	if (IsValid(PatrolRoute))
 	{
-		PatrolRoute->ModifyEnemiesOnRoute(false); // Remove enemy from patrol route
+		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
 	
-	// do something with egg
-	if (bIsEggThief)
-	{
-		// do something with egg
-	}
-	
-	Destroy(); // Destroy grunt enemy
+	ToggleGruntEnemy(false);
 }
 
 /* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.

@@ -28,14 +28,6 @@ AEnemyBase::AEnemyBase()
 	FloatingPawnMovement->UpdatedComponent = RootComponent;
 }
 
-// Sets enemy variables when spawning 
-void AEnemyBase::SetVariables()
-{
-	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
-	CurrentHealth = MaxHealth; // Set current health to maximum health
-	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed; // Set movement speed to max
-}
-
 // Moves the enemy along the spline path
 void AEnemyBase::MoveAlongSpline(float DeltaTime)
 {
@@ -57,12 +49,23 @@ void AEnemyBase::MoveAlongSpline(float DeltaTime)
 	}
 }
 
-// Initializes the enemy on the patrol route at a specific distance
+/* Assigns the patrol route, spline component, distance along spline, and current health of the enemy. Returns early
+ * if patrol route is invalid.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AEnemyBase::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
-	PatrolRoute = Route; // Assign the patrol route
-	SplineComponent = PatrolRoute->GetSplineComponent(); // Get the spline component from the patrol route
-	DistanceAlongSpline = InitialDistance; // Set the initial distance along the route
+	if (!IsValid(Route))
+	{
+		return;
+	}
+	
+	PatrolRoute = Route;
+	SplineComponent = PatrolRoute->GetSplineComponent();
+	DistanceAlongSpline = InitialDistance;
+	CurrentHealth = MaxHealth;
 }
 
 // Modifies the enemy's health by a specified amount
@@ -75,6 +78,15 @@ void AEnemyBase::ModifyCurrentHealth(float const Amount)
 	{
 		DestroySelfEnemy();
 	}
+}
+
+/* Gets reference to player character
+ */
+void AEnemyBase::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
 }
 
 /* Finds rotation based on input direction and direction away from input array of actors to avoid if there is any.

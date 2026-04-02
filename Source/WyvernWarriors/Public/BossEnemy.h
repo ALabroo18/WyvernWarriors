@@ -55,6 +55,9 @@ public:
 	FVector GetFutureLocation(float const TimePassed) const;
 
 private:
+	// Sets up variables
+	virtual void BeginPlay() override;
+	
 	// Destroys self and completes the wave
 	virtual void DestroySelfEnemy() override;
 	

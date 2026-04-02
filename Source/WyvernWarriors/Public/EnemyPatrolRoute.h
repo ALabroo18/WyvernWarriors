@@ -21,7 +21,7 @@ public:
 	
 	// Adds an enemy to the patrol route
 	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
-	void ModifyEnemiesOnRoute(bool IncreaseNumber);
+	void ModifyRouteEnemyCount(bool bIncreaseCount);
 	
 	// Sets the maximum amount of enemies allowed on patrol route
 	UFUNCTION(BlueprintCallable, Category = "Patrol Route")
