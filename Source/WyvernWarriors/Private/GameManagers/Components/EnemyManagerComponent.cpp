@@ -241,12 +241,12 @@ void UEnemyManagerComponent::DestroyAllEnemies(bool const bIncludeBoss)
 	{
 		if (AGruntEnemy* Grunt = GruntEnemies.Last(); IsValid(Grunt))
 		{
-			Grunt->Destroy();
+			Grunt->DestroySelfEnemy();
 		}
 	}
 }
 
-/* On the final wave, desory all enemies and spawn the boss.
+/* On the final wave, destroy all enemies and spawn the boss.
  */
 void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
