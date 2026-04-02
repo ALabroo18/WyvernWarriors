@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,6 +5,7 @@
 #include "GruntEnemy.generated.h"
 
 class AGruntEnemyProjectile;
+class AGruntEnemyController;
 class USplineComponent;
 class UArrowComponent;
 class UAIPerceptionComponent;
@@ -25,7 +24,7 @@ public:
 	AGruntEnemy();
 	
 	// Toggles grunt enemy to be on/off
-	void ToggleGruntEnemy(bool const bToggleActive);
+	AGruntEnemyController* ToggleGruntEnemy(bool const bToggleActive);
 	
 	// Initializes the enemy on the patrol route at a specific distance
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute) override;

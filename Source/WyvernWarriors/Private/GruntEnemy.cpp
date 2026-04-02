@@ -10,6 +10,7 @@
 #include "GameManagers/Components/EnemyManagerComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
+#include "GruntEnemyController.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 
@@ -56,33 +57,40 @@ void AGruntEnemy::BeginPlay()
  * visibility of grunt enemy.
  * @param bIsActive - whether the grunt enemy is being made active or inactive
  */
-void AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
+AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 {
+	SetActorTickEnabled(bToggleActive);
+	SetActorHiddenInGame(!bToggleActive);
+	bIsActive = bToggleActive;
+	
 	if (bToggleActive)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Enabling %s grunt"), *this->GetName());
+		UE_LOG(LogTemp, Log, TEXT("Enabling %s grunt"), *this->GetName());
 		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		
 		FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
+		return nullptr;
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Disabling %s grunt"), *this->GetName());
-		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		
-		FloatingPawnMovement->MaxSpeed = 0.f;
-		FloatingPawnMovement->StopMovementImmediately();
-		
-		GetController()->UnPossess();
-	}
+
+	UE_LOG(LogTemp, Log, TEXT("Disabling %s grunt"), *this->GetName());
+	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
-	SetActorTickEnabled(bToggleActive);
-	SetActorHiddenInGame(!bToggleActive);
-	bIsActive = bToggleActive;
+	FloatingPawnMovement->MaxSpeed = 0.f;
+	FloatingPawnMovement->StopMovementImmediately();
+	
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
+		return nullptr;
+	}
+	GruntEnemyController->UnPossess();
+	return GruntEnemyController;
+
 }
 
 // Executes the attack on the player by spawning a projectile
