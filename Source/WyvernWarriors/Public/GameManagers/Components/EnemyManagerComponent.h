@@ -32,7 +32,7 @@ public:
 	FTransform GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline);
 	
 	// Gets a route for the enemy to spawn on
-	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Enemy Spawning")
 	AEnemyPatrolRoute* GetSpawnPatrolRoute();
 	
 	// Spawns a single grunt enemy at a random spawn point
