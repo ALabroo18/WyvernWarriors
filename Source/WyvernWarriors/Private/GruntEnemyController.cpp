@@ -28,6 +28,7 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 	const AGruntEnemy* ControlledGruntEnemy = Cast<AGruntEnemy>(GetPawn());
 	if(!IsValid(ControlledGruntEnemy))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess is invalid"));
 		return;
 	}
 
@@ -35,6 +36,7 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 	GruntBlackboardComponent->InitializeBlackboard(*GruntBehaviorTree->BlackboardAsset);
 	if (!IsValid(GruntBlackboardComponent))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess has invalid blackboard"));
 		return;
 	}
 

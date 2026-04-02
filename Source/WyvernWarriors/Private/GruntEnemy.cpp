@@ -56,10 +56,11 @@ void AGruntEnemy::BeginPlay()
  * visibility of grunt enemy.
  * @param bIsActive - whether the grunt enemy is being made active or inactive
  */
-void AGruntEnemy::ToggleGruntEnemy(bool const bIsActive)
+void AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 {
-	if (bIsActive)
+	if (bToggleActive)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Enabling %s grunt"), *this->GetName());
 		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -68,16 +69,20 @@ void AGruntEnemy::ToggleGruntEnemy(bool const bIsActive)
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Disabling %s grunt"), *this->GetName());
 		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		
 		FloatingPawnMovement->MaxSpeed = 0.f;
 		FloatingPawnMovement->StopMovementImmediately();
+		
+		GetController()->UnPossess();
 	}
 	
-	SetActorTickEnabled(bIsActive);
-	SetActorHiddenInGame(!bIsActive);
+	SetActorTickEnabled(bToggleActive);
+	SetActorHiddenInGame(!bToggleActive);
+	bIsActive = bToggleActive;
 }
 
 // Executes the attack on the player by spawning a projectile
@@ -145,8 +150,6 @@ void AGruntEnemy::DestroySelfEnemy()
 	{
 		return;
 	}
-	
-	GetController()->UnPossess();
 	
 	if (UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent(); IsValid(EnemyManagementComponent))
 	{

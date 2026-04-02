@@ -25,7 +25,7 @@ public:
 	AGruntEnemy();
 	
 	// Toggles grunt enemy to be on/off
-	void ToggleGruntEnemy(bool const bIsActive);
+	void ToggleGruntEnemy(bool const bToggleActive);
 	
 	// Initializes the enemy on the patrol route at a specific distance
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute) override;
@@ -112,4 +112,8 @@ private:
 	// Material used to highlight the enemy
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Appearance", meta = (AllowPrivateAccess = true))
 	UMaterialInterface* HighlightMaterial;
+	
+	// Whether the grunt is active in world or not
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsActive = false;
 };
