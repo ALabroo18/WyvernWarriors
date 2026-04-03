@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EnemyManagerComponent.generated.h"
 
+class UEventBusComponent;
 class AGruntEnemyController;
 class AGruntEnemy;
 class AEnemySpawnPoint;
@@ -17,7 +18,11 @@ class WYVERNWARRIORS_API UEnemyManagerComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+	// Sets up delegate.
+	virtual void BeginPlay() override;
+	
 	// Sets up enemy manager
+	UFUNCTION(Category = "Enemy Management")
 	void SetupEnemyManager();
 	
 	// Getter for the boss
@@ -45,7 +50,7 @@ public:
 	
 	// Removes a grunt enemy from the active grunt array
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy);
+	void RemoveActiveGruntEnemy(AGruntEnemy* DeadGrunt);
 	
 	// Destroys all enemies (grunts, boss) that are alive
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
@@ -62,6 +67,10 @@ public:
 	void AddInactiveGruntEnemyController(AGruntEnemyController* GruntEnemyController) { InactiveGruntEnemyControllers.Enqueue(GruntEnemyController); }
 
 private:
+	// Event bus used for delegates
+	UPROPERTY()
+	UEventBusComponent* EventBus;
+	
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;

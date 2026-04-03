@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EventBusComponent.generated.h"
 
+class AGruntEnemy;
 class ACannonball;
 class ACannon;
 
@@ -12,6 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNewWave, bool, bIsFinalWave); // 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWaveComplete, bool, bIsFinalWave); // Delegate for wave completion event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCannonCanBeLoaded, bool, bCanBeLoaded, ACannon*, CannonToBeLoaded); // Delegate for wave completion event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCutsceneEvent, bool, bIsHappening); // Delegate for when cutscene happens
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGruntDeath, AGruntEnemy*, DeadGrunt); // Delegate for when grunt enemy dies
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent
@@ -38,6 +40,10 @@ public:
 	// Delegate for when cutscene happens
 	UPROPERTY(BlueprintAssignable, Category = "Cinematics")
 	FCutsceneEvent CutsceneEvent;
+	
+	// Delegate for when grunt enemy dies
+	UPROPERTY(BlueprintAssignable, Category = "Enemy")
+	FOnGruntDeath OnGruntDeath;
 
 private:	
 	// Sets default values for this component's properties

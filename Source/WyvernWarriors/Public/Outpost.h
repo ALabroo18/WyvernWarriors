@@ -37,11 +37,12 @@ public:
 	// Adds a grunt enemy to the outpost's managed array of grunt enemies 
 	UFUNCTION(BlueprintCallable, Category = "Enemies")
 	void AddGruntEnemy(AGruntEnemy* GruntEnemy) { GruntEnemies.Add(GruntEnemy); }
-
-private:
+	
+protected:
 	// Sets initial values for variables
 	virtual void BeginPlay() override;
 	
+private:
 	// Whether the outpost is controlled by the player	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Outpost", meta = (AllowPrivateAccess = true))
 	bool bIsPlayerControlled = true; 
