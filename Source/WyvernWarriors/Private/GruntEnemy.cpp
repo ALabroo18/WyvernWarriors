@@ -7,7 +7,7 @@
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/EnemyManagerComponent.h"
+#include "GameManagers/Components/EventBusComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
 #include "GruntEnemyController.h"
@@ -44,17 +44,23 @@ void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute
 	bOnRoute = bSpawnOnRoute;
 }
 
-/* Sets up mesh dynamic material and gets references to player character and camera.
+/* Sets up mesh dynamic material and gets references to player character and camera. Gets event bus component from game
+ * mode for broadcasting events on enemy death.
  */
 void AGruntEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0));
-	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); 
+	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	
+	if (const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld())); IsValid(GameModeLevel))
+	{
+		EventBus = GameModeLevel->GetEventBusComponent();
+	}
 }
 
 /* Toggles the grunt as being active or inactive by setting collisions and movement speed. Also toggles tick and
- * visibility of grunt enemy.
+ * visibility of grunt enemy. Tells controller to unpossess this grunt.
  * @param bIsActive - whether the grunt enemy is being made active or inactive
  */
 AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
@@ -148,27 +154,16 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 	}
 }
 
-/* Unposses controller from self then tells enemy manager to remove grunt enemy from active array. Subtracts itself
- * from patrol route count then toggles self to become inactive.
+/* Subtracts itself from patrol route count then toggles self to become inactive. Broadcasts grunt death event with
+ * this grunt.
  */
 void AGruntEnemy::DestroySelfEnemy()
 {
-	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameMode))
-	{
-		return;
-	}
-	
-	if (UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent(); IsValid(EnemyManagementComponent))
-	{
-		EnemyManagementComponent->RemoveActiveGruntEnemy(this);
-	}
-	
 	if (IsValid(PatrolRoute))
 	{
 		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
-	
+	EventBus->OnGruntDeath.Broadcast(this);
 	ToggleGruntEnemy(false);
 }
 
