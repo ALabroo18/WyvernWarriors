@@ -1,4 +1,5 @@
 #include "GameManagers/Components/EnemyManagerComponent.h"
+#include "GameManagers/Components/EventBusComponent.h"
 #include "Components/SplineComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
@@ -8,6 +9,7 @@
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyController.h"
 #include "Outpost.h"
+#include "GameManagers/GameModeLevel.h"
 
 
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
@@ -143,7 +145,12 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	}
 
 	AGruntEnemy* NewGruntEnemy;
-	InactiveGruntEnemies.Dequeue(NewGruntEnemy);
+	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No grunt enemies in inactive queue to spawn"));
+		return nullptr;
+	}
+	
 	if (bIgnoreSpawnCap)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Spawning new grunt that ignores spawn cap."));
@@ -323,16 +330,16 @@ void UEnemyManagerComponent::SpawnBoss()
 /* Removes grunt enemy from active array, then adds grunt enemy and its controller to respective inactive queues.
  * @param GruntEnemy - grunt enemy that is turning inactive
  */
-void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
+void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* DeadGrunt)
 {
-	if (!IsValid(GruntEnemy))
+	if (!IsValid(DeadGrunt))
 	{
 		return;
 	}
 
-	ActiveGruntEnemies.Remove(GruntEnemy);
-	InactiveGruntEnemies.Enqueue(GruntEnemy);
-	InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(GruntEnemy->GetController()));
+	ActiveGruntEnemies.Remove(DeadGrunt);
+	InactiveGruntEnemies.Enqueue(DeadGrunt);
+	InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(DeadGrunt->GetController()));
 }
 
 /* Destroys all valid enemies, including grunts and boss if included.
@@ -362,6 +369,19 @@ void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 	{
 		DestroyAllEnemies(false);
 		SpawnBoss();
+	}
+}
+
+/* Binds the grunt death delegate to remove active grunt function.
+ */
+void UEnemyManagerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld())); IsValid(GameModeLevel))
+	{
+		EventBus = GameModeLevel->GetEventBusComponent();
+		EventBus->OnGruntDeath.AddDynamic(this, &UEnemyManagerComponent::RemoveActiveGruntEnemy);
 	}
 }
 

@@ -4,6 +4,7 @@
 #include "EnemyBase.h"
 #include "GruntEnemy.generated.h"
 
+class UEventBusComponent;
 class AGruntEnemyProjectile;
 class AGruntEnemyController;
 class USplineComponent;
@@ -67,6 +68,10 @@ public:
 private:
 	// Sets grunt variables on game start
 	virtual void BeginPlay() override;
+	
+	// Event bus component used for delegates
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
+	UEventBusComponent* EventBus;
 	
 	// Camera manager that is attached to player
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
