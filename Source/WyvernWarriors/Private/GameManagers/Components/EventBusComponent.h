@@ -11,6 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FWyvernCanPickUpCannonball, bool, b
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNewWave, bool, bIsFinalWave); // Delegate for new wave event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWaveComplete, bool, bIsFinalWave); // Delegate for wave completion event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCannonCanBeLoaded, bool, bCanBeLoaded, ACannon*, CannonToBeLoaded); // Delegate for wave completion event
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCutsceneEvent, bool, bIsHappening); // Delegate for when cutscene happens
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent
@@ -33,6 +34,10 @@ public:
 	// Delegate for when a cannon can be loaded or not
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannon")
 	FCannonCanBeLoaded CannonCanBeLoaded;
+	
+	// Delegate for when cutscene happens
+	UPROPERTY(BlueprintAssignable, Category = "Cinematics")
+	FCutsceneEvent CutsceneEvent;
 
 private:	
 	// Sets default values for this component's properties

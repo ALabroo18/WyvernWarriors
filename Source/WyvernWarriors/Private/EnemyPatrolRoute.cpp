@@ -9,15 +9,15 @@ AEnemyPatrolRoute::AEnemyPatrolRoute()
 }
 
 // Modifies the number of enemies on the patrol route
-void AEnemyPatrolRoute::ModifyEnemiesOnRoute(bool IncreaseNumber)
+void AEnemyPatrolRoute::ModifyRouteEnemyCount(bool bIncreaseCount)
 {
 	// If trying to increase the number of enemies but the route is already full, do nothing
-	if (IncreaseNumber && bIsRouteFull)
+	if (bIncreaseCount && bIsRouteFull)
 	{
 		return;
 	}
 	
-	NumEnemiesOnRoute += IncreaseNumber ? 1 : -1; // Increase or decrease the number of enemies on the route
+	NumEnemiesOnRoute += bIncreaseCount ? 1 : -1; // Increase or decrease the number of enemies on the route
 
 	SetRouteFull(); // Set if the patrol route is full after modification
 }

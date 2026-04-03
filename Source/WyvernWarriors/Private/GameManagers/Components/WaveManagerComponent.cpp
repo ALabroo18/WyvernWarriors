@@ -161,7 +161,7 @@ void UWaveManagerComponent::ResetControlMeter()
 }
 
 // Sets the starting variables for wave management
-void UWaveManagerComponent::SetStartVariables()
+void UWaveManagerComponent::SetupWaveManager()
 {
 	GameModeLevel = Cast<AGameModeLevel>(GetOwner()); // Get reference to game mode level
 	GameStateLevel = Cast<AGameStateLevel>(GameModeLevel->GetGameStateLevelRef()); // Get reference to game state level
@@ -193,7 +193,7 @@ void UWaveManagerComponent::ModifyControlMeterCurrent(float Amount, bool bCanByp
 	// Do not modify control meter if it is resetting
 	if (bResettingControlMeter)
 	{
-		if (bCanBypassReset == false)
+		if (!bCanBypassReset)
 		{
 			return;
 		}

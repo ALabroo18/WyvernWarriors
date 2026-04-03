@@ -22,7 +22,6 @@ public:
 	// Called when the controller possesses a pawn
 	virtual void OnPossess(APawn* InPawn) override;
 
-
 private:
 	// Blackboard component for behavior tree
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
@@ -35,10 +34,6 @@ private:
 	// Perception component for sensing the environment
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
 	UAIPerceptionComponent* GruntAIPerceptionComponent;
-	
-	// Key name for blackboard bool for fleeing
-	/*UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
-	FName FleeingBool = FName("bFleeingFromPlayer");*/
 	
 	// Key name for blackboard bool for aggressive state
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))

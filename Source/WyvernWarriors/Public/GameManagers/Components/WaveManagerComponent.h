@@ -19,7 +19,7 @@ class WYVERNWARRIORS_API UWaveManagerComponent : public UActorComponent
 public:
 	// Sets the starting variables for wave management
 	UFUNCTION(BlueprintCallable, Category = "Wave")
-	void SetStartVariables(); 
+	void SetupWaveManager(); 
 	
 	// Completes the current wave
 	UFUNCTION(BlueprintCallable, Category = "Wave")

@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "EnemyManagerComponent.generated.h"
 
-class AGameModeLevel;
+class AGruntEnemyController;
 class AGruntEnemy;
 class AEnemySpawnPoint;
 class AEnemyPatrolRoute;
@@ -17,6 +17,9 @@ class WYVERNWARRIORS_API UEnemyManagerComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+	// Sets up enemy manager
+	void SetupEnemyManager();
+	
 	// Getter for the boss
 	ABossEnemy* GetBossEnemy() const {return BossEnemy; }
 	
@@ -29,7 +32,7 @@ public:
 	FTransform GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline);
 	
 	// Gets a route for the enemy to spawn on
-	UFUNCTION(BlueprintCallable, Category = "Enemy Spawning")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Enemy Spawning")
 	AEnemyPatrolRoute* GetSpawnPatrolRoute();
 	
 	// Spawns a single grunt enemy at a random spawn point
@@ -40,30 +43,38 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy Spawnng")
 	void SpawnBoss();
 	
-	// Removes a grunt enemy from management
+	// Removes a grunt enemy from the active grunt array
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void RemoveGruntEnemy(AGruntEnemy* GruntEnemy);
+	void RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy);
 	
 	// Destroys all enemies (grunts, boss) that are alive
 	UFUNCTION(BlueprintCallable, Category = "Enemy Management")
-	void DestroyAllEnemies();
+	void DestroyAllEnemies(bool const bIncludeBoss);
 	
 	// Spawns boss on final wave
 	UFUNCTION(Blueprintable, Category = "Enemy Spawning")
 	void OnNewWave(bool const bIsFinalWave);
+	
+	// Adds a grunt into the inactive grunt queue
+	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Enqueue(GruntEnemy); }
+
+	// Adds a  controller into the inactive grunt controller queue
+	void AddInactiveGruntEnemyController(AGruntEnemyController* GruntEnemyController) { InactiveGruntEnemyControllers.Enqueue(GruntEnemyController); }
 
 private:
-	// Reference to game mode
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Game Manager", meta = (AllowPrivateAccess = true))
-	AGameModeLevel* GameModeLevel;
-	
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;
 	
-	// Array of grunt enemies managed by this component
+	// Array of active grunt enemies 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
-	TArray<AGruntEnemy*> GruntEnemies;
+	TArray<AGruntEnemy*> ActiveGruntEnemies;
+	
+	// Queue of inactive grunt enemies
+	TQueue<AGruntEnemy*> InactiveGruntEnemies;
+	
+	// Queue of inactive grunt enemy controllers
+	TQueue<AGruntEnemyController*> InactiveGruntEnemyControllers;
 	
 	// Reference to the boss enemy
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))

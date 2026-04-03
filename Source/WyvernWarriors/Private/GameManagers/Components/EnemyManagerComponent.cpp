@@ -6,9 +6,9 @@
 #include "BossEnemy.h"
 #include "EnemySpawnPoint.h"
 #include "EnemyPatrolRoute.h"
+#include "GruntEnemyController.h"
 #include "Outpost.h"
-#include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/CannonManagerComponent.h"
+
 
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
 FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
@@ -27,12 +27,14 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 	{
 		if (EnemySpawnPoints.IsEmpty())
 		{
+			UE_LOG(LogTemp, Error, TEXT("No spawn points for enemy spawning."));
 			return FTransform::Identity;
 		}
 		
 		const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
 		if (!IsValid(SpawnPoint))
 		{
+			UE_LOG(LogTemp, Error, TEXT("Random enemy spawn point chosen is invalid."));
 			return FTransform::Identity;
 		}
 		SpawnLocation = SpawnPoint->GetActorLocation(); // Get the location of the spawn point
@@ -45,6 +47,7 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 	
 	if (DistanceToPlayer < MinimumPlayerSpawnDistance) 
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Player too close to spawn point for spawning: %f."), DistanceToPlayer);
 		return FTransform::Identity;
 	}
 	
@@ -79,6 +82,7 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
 {
 	if (EnemyPatrolRoutes.IsEmpty())
 	{
+		UE_LOG(LogTemp, Error, TEXT("No patrol route to get for spawning."));
 		return nullptr;
 	}
 	
@@ -87,18 +91,23 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
 	{
 		if (IsValid(Route))
 		{
-			// Skip full patrol routes and boss patrol route
-			if (Route->GetRouteFull() || Route->ActorHasTag("Boss"))
+			if (Route->GetRouteFull())
 			{
+				UE_LOG(LogTemp, Warning, TEXT("%s is full, skipping for spawning."), *Route->GetName());
 				continue;
 			}
 
 			OpenPatrolRoutes.Add(Route);
 		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("Patrol route is invalid, skipping for spawning."));
+		}
 	}
 	
 	if (OpenPatrolRoutes.IsEmpty())
 	{
+		UE_LOG(LogTemp, Error, TEXT("There are no open patrol route to spawn at."));
 		return nullptr;
 	}
 
@@ -115,29 +124,99 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  */
 AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute, bool const bIgnoreSpawnCap)
 {
-	if (!IsValid(Route) || SpawnTransform.Equals(FTransform::Identity))
+	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity && !bIgnoreSpawnCap)
 	{
+		UE_LOG(LogTemp, Error, TEXT("Too many active grunts, unable to spawn grunts for outpost."));
 		return nullptr;
 	}
 	
-	if (GruntEnemies.Num() >= GruntSpawnCapacity && !bIgnoreSpawnCap)
+	if (!IsValid(Route))
 	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid route for grunt enemy spawning."));
 		return nullptr;
 	}
 	
-	AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
-	if (!IsValid(NewGruntEnemy))
+	if (SpawnTransform.Equals(FTransform::Identity))
 	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid spawn transform grunt enemy spawning."));
 		return nullptr;
 	}
-	
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); 
-	
-	GruntEnemies.Add(NewGruntEnemy);
-	Route->ModifyEnemiesOnRoute(true);
-	
-	NewGruntEnemy->FinishSpawning(SpawnTransform);
+
+	AGruntEnemy* NewGruntEnemy;
+	InactiveGruntEnemies.Dequeue(NewGruntEnemy);
+	if (bIgnoreSpawnCap)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Spawning new grunt that ignores spawn cap."));
+		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
+		NewGruntEnemy->FinishSpawning(SpawnTransform);
+	}
+	else
+	{
+		NewGruntEnemy->SetActorTransform(SpawnTransform);
+	}
+
+	ActiveGruntEnemies.Add(NewGruntEnemy);
+	Route->ModifyRouteEnemyCount(true);
+
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute);
+	NewGruntEnemy->ToggleGruntEnemy(true);
+
+	AGruntEnemyController* NewGruntEnemyController;
+	InactiveGruntEnemyControllers.Dequeue(NewGruntEnemyController);
+	if (!IsValid(NewGruntEnemyController))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Grunt enemy controller from inactive queue is invalid."));
+		return nullptr;
+	}
+	NewGruntEnemyController->Possess(NewGruntEnemy);
+
 	return NewGruntEnemy;
+}
+
+/* Populates the inactive grunt enemy queue with new grunt enemies up to the spawn capacity. Gets boss patrol route,
+ * grunt patrol routes, and grunt spawn points.
+ */
+void UEnemyManagerComponent::SetupEnemyManager()
+{
+	for (int i = 0; i < GruntSpawnCapacity; i++)
+	{
+		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyToSpawn);
+		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
+		InactiveGruntEnemyControllers.Enqueue(NewGruntEnemy->ToggleGruntEnemy(false));
+	}
+	
+	TArray<AActor*> TempActors;
+	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), AEnemyPatrolRoute::StaticClass(), "Grunt", TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			EnemyPatrolRoutes.Add(Cast<AEnemyPatrolRoute>(TempActor));
+		}
+	}
+	
+	TempActors.Empty();
+	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), AEnemyPatrolRoute::StaticClass(), "Boss", TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			BossPatrolRoute = Cast<AEnemyPatrolRoute>(TempActor);
+		}
+	}
+	
+	TempActors.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemySpawnPoint::StaticClass(), TempActors); // Get all cannonball stacks in level
+	
+	for (AActor* TempActor : TempActors)
+	{
+		if (IsValid(TempActor))
+		{
+			EnemySpawnPoints.Add(Cast<AEnemySpawnPoint>(TempActor));
+		}
+	}
 }
 
 /* Spawns a random amount of grunt enemies on outpost patrol route depending on pre-existing amount and add enemies to
@@ -147,26 +226,49 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
  */
 void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
 {
-	if (GruntEnemies.Num() >= GruntSpawnCapacity)
+	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Too many active grunts, unable to spawn grunts for outpost."));
 		return;
 	}
 	
 	AEnemyPatrolRoute* OutpostPatrolRoute = Outpost->GetOutpostPatrolRoute();
-	if (!IsValid(OutpostPatrolRoute) || OutpostPatrolRoute->GetRouteFull())
+	if (!IsValid(OutpostPatrolRoute))
 	{
+		UE_LOG(LogTemp, Error, TEXT("%s patrol route is invalid or full."), *Outpost->GetName());
+		return;
+	}
+	
+	if (OutpostPatrolRoute->GetRouteFull())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s patrol route is  full."), *Outpost->GetName());
 		return;
 	}
 	
 	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute() - OutpostPatrolRoute->GetNumEnemiesOnRoute();
 	int32 SpawnAmount = FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
+	int32 SpawnAttempts = 0;
+	bool bUnableToSpawnAtOutpost = false;
 	
 	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
 	{
 		float RouteSpawnDistance;
-		FTransform const SpawnTransform = GetGruntSpawnTransform(OutpostPatrolRoute, RouteSpawnDistance);
+		FTransform SpawnTransform;
+		if (SpawnAttempts >= 10 || bUnableToSpawnAtOutpost)
+		{
+			bUnableToSpawnAtOutpost = true;
+			UE_LOG(LogTemp, Warning, TEXT("Unable to spawn at %s patrol route, spawning at spawn point instead."), *Outpost->GetName());
+			SpawnTransform = GetGruntSpawnTransform(nullptr, RouteSpawnDistance);
+		}
+		else
+		{
+			SpawnTransform = GetGruntSpawnTransform(OutpostPatrolRoute, RouteSpawnDistance);
+		}
+		
 		if (SpawnTransform.Equals(FTransform::Identity))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Spawn transform is default, trying to spawn another grunt for %s.: Attempt: %d"), *Outpost->GetName(), SpawnAttempts);
+			SpawnAttempts++;
 			continue;
 		}
 		
@@ -176,11 +278,12 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 			OutpostPatrolRoute,
 			true,
 			false);
+		
 		if (!Outpost->GetGruntEnemies().Contains(NewGrunt))
 		{
 			Outpost->AddGruntEnemy(NewGrunt);
 		}
-		
+
 		SpawnAmount--;
 	}
  }
@@ -217,45 +320,49 @@ void UEnemyManagerComponent::SpawnBoss()
 	BossEnemy->FinishSpawning(SpawnTransform); // Spawn boss after setting variables
 }
 
-// Removes a grunt enemy from management
-void UEnemyManagerComponent::RemoveGruntEnemy(AGruntEnemy* GruntEnemy)
+/* Removes grunt enemy from active array, then adds grunt enemy and its controller to respective inactive queues.
+ * @param GruntEnemy - grunt enemy that is turning inactive
+ */
+void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* GruntEnemy)
 {
-	// Ensure the grunt enemy is valid
 	if (!IsValid(GruntEnemy))
 	{
 		return;
 	}
 
-	GruntEnemies.Remove(GruntEnemy); // Remove the grunt enemy from the managed array
+	ActiveGruntEnemies.Remove(GruntEnemy);
+	InactiveGruntEnemies.Enqueue(GruntEnemy);
+	InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(GruntEnemy->GetController()));
 }
 
-// Destroys all enemies (grunts, boss) that are alive
-void UEnemyManagerComponent::DestroyAllEnemies()
+/* Destroys all valid enemies, including grunts and boss if included.
+ * @param bIncludeBoss - bool for is boss should be destroyed too.
+ */
+void UEnemyManagerComponent::DestroyAllEnemies(bool const bIncludeBoss)
 {
-	// Check for boss enemy and destroy if possible
-	if (!IsValid(BossEnemy))
+	if (bIncludeBoss && IsValid(BossEnemy))
 	{
 		BossEnemy->Destroy();
 	}
 	
-	// Check all grunt enemies in array and destroy if possible
-	for (AGruntEnemy* Grunt : GruntEnemies)
+	while (!ActiveGruntEnemies.IsEmpty())
 	{
-		if (!IsValid(Grunt))
+		if (AGruntEnemy* Grunt = ActiveGruntEnemies.Last(); IsValid(Grunt))
 		{
-			Grunt->Destroy();
+			Grunt->DestroySelfEnemy();
 		}
 	}
 }
 
-// Spawns boss on final wave and set delegate
+/* On the final wave, destroy all enemies and spawn the boss.
+ */
 void UEnemyManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
 	if (bIsFinalWave)
 	{
-		SpawnBoss(); // Spawn boss for final wave
-		GameModeLevel = Cast<AGameModeLevel>(GetOwner()); // Get reference to game mode level
-		UCannonManagerComponent* CannonManager = GameModeLevel->GetCannonManager(); // Get reference to cannon manager
-		BossEnemy->OnForceFieldChange.AddDynamic(CannonManager, &UCannonManagerComponent::ChangeCannonsFireable); // Set delegate for boss force field to change cannon ability to fire
+		DestroyAllEnemies(false);
+		SpawnBoss();
 	}
 }
+
+

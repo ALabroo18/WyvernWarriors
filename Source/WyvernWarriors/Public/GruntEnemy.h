@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,6 +5,7 @@
 #include "GruntEnemy.generated.h"
 
 class AGruntEnemyProjectile;
+class AGruntEnemyController;
 class USplineComponent;
 class UArrowComponent;
 class UAIPerceptionComponent;
@@ -24,8 +23,8 @@ public:
 	// Sets default values for this pawn's properties
 	AGruntEnemy();
 	
-	// Sets enemy variables when spawning 
-	virtual void SetVariables() override;
+	// Toggles grunt enemy to be on/off
+	AGruntEnemyController* ToggleGruntEnemy(bool const bToggleActive);
 	
 	// Initializes the enemy on the patrol route at a specific distance
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute) override;
@@ -64,9 +63,11 @@ public:
 	
 	// Flee from the character until far enough
 	void FleePlayerCharacter(float const DeltaTime);
-	
 
 private:
+	// Sets grunt variables on game start
+	virtual void BeginPlay() override;
+	
 	// Camera manager that is attached to player
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
 	APlayerCameraManager* PlayerCameraManager;
@@ -110,4 +111,8 @@ private:
 	// Material used to highlight the enemy
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Appearance", meta = (AllowPrivateAccess = true))
 	UMaterialInterface* HighlightMaterial;
+	
+	// Whether the grunt is active in world or not
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsActive = false;
 };
