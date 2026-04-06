@@ -7,10 +7,18 @@
 #include "NiagaraFunctionLibrary.h"
 #include "Components/SplineComponent.h"
 
-
 class AEnemyPatrolRoute;
 
 #define PLAYER_COLLISION_CHANNEL ECollisionChannel::ECC_GameTraceChannel1
+
+ABossEnemy::ABossEnemy()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	
+	ForceField = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ForceField"));
+	ForceField->SetupAttachment(SkeletalMesh);
+	ForceField->bAllowConcurrentTick = false;
+}
 
 /* Sets up health, movement speed, and reference to player.
  */
@@ -57,14 +65,21 @@ void ABossEnemy::DamageForceField()
 	// Deactivate force field when health hits 0
 	if (CurrentForceFieldHealth == 0)
 	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			ForceFieldBreak,
+			GetActorLocation(),
+			FRotator::ZeroRotator,
+			FVector(100.f),
+			true,
+			true,
+			ENCPoolMethod::AutoRelease
+		);
+		
 		bIsForceFieldActive = false;
-		
-		// Remove visual of force field
-		if (IsValid(SkeletalMesh))
-		{
-			SkeletalMesh->SetOverlayMaterial(nullptr); 
-		}
-		
+		ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ForceField->SetVisibility(false);
+		UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
 		OnForceFieldChange.Broadcast(EForceFieldChange::Depleted); // Broadcast depletion of force field
 	}
 	// Broadcast hit to force field state
@@ -77,14 +92,21 @@ void ABossEnemy::DamageForceField()
 // Reactivates force field and restores its health
 void ABossEnemy::RestoreForceField()
 {
-	bIsForceFieldActive = true; // Set force field active
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			ForceFieldBreak,
+			GetActorLocation(),
+			FRotator::ZeroRotator,
+			1000000.f * GetActorScale(),
+			true,
+			true,
+			ENCPoolMethod::AutoRelease
+		);
 	
-	// Set force field visual
-	if (IsValid(SkeletalMesh))
-	{
-		SkeletalMesh->SetOverlayMaterial(ForceFieldMaterial);
-		UE_LOG(LogTemp, Log, TEXT("Set force field"));
-	}
+	bIsForceFieldActive = true; // Set force field active
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	ForceField->SetVisibility(true); // Hide force field
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 	
 	CurrentForceFieldHealth = MaxForceFieldHealth; // Set force field health to max
 	OnForceFieldChange.Broadcast(EForceFieldChange::Restored); // Broadcast force field as restored

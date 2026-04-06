@@ -7,6 +7,7 @@
 class ACharacter;
 class UMaterial;
 class UNiagaraSystem;
+class UStaticMeshComponent;
 
 UENUM(BlueprintType)
 enum class EForceFieldChange : uint8
@@ -55,6 +56,9 @@ public:
 	FVector GetFutureLocation(float const TimePassed) const;
 
 private:
+	//
+	ABossEnemy();
+	
 	// Sets up variables
 	virtual void BeginPlay() override;
 	
@@ -68,9 +72,9 @@ private:
 	// Number of lightning strikes executed
 	int32 StrikesExecuted = 0;
 	
-	// Material used for force field visual
+	// Mesh used for force field visual
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
-	UMaterial* ForceFieldMaterial;
+	UStaticMeshComponent* ForceField;
 	
 	// Is the boss using force field
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
@@ -87,6 +91,14 @@ private:
 	// Max health of the force fields
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	int MaxForceFieldHealth = 3;
+	
+	// Niagara effect for force field breaking
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UNiagaraSystem* ForceFieldBreak;
+	
+	// Niagara effect for force field restoring
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UNiagaraSystem* ForceFieldRestore;
 	
 	// Interval between lightning attacks
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
@@ -119,8 +131,8 @@ private:
 	// Niagara effect for lightning strike
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningStrikeEffect; 
-	// Niagara effect for lightning telegraph
 	
+	// Niagara effect for lightning telegraph
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningTelegraphEffect;
 	
