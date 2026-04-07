@@ -4,6 +4,8 @@
 #include "EnemyBase.h"
 #include "BossEnemy.generated.h"
 
+class UBehaviorTree;
+class AGruntEnemy;
 class ACharacter;
 class UMaterial;
 class UNiagaraSystem;
@@ -93,13 +95,17 @@ private:
 	// Moves back to patrol route
 	virtual void ReturnToRoute(float const DeltaTime) override;
 	
+	// Gets a valid location above a village
+	UFUNCTION(Category = "Movement")
+	void GetVillageLocation();
+	
 	// Array of weapon drop-offs for villages
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
 	TArray<AWeaponDropOff*> WeaponDropOffs;
 	
-	// Weapon drop off of specific village
+	// Location above village for boss to travel to
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
-	AWeaponDropOff* WeaponDropOff;
+	FVector LocationAboveVillage;
 	
 	// Mesh used for force field visual
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
@@ -129,46 +135,62 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* ForceFieldRestore;
 	
+	// Summons grunt enemies to attack the player
+	UFUNCTION(Category = "Summons")
+	void SummonGruntEnemies();
+	
+	// Grunt enemies summoned by boss
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
+	TArray<AGruntEnemy*> GruntSummons;
+	
+	// Grunt enemy class for spawning
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
+	TSubclassOf<AGruntEnemy> GruntEnemyClass;
+	
+	// Grunt enemies summoned by boss
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
+	int32 GruntSummonAmount;
+	
 	// Timer handles for lightning strike attack and delay
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	FTimerHandle LightningStrikeHandle;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	FTimerHandle LightningStrikeDelayHandle;
 	
 	// Interval between lightning attacks
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningAttackInterval = 15.f;
 	
 	// Interval between lightning attack bursts
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningAttackBurstInterval = 3.f;
 	
 	// Delay after telegraph before executing strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningAttackStrikeDelay = 2.f;
 	
 	// Radius around player for lightning strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikePlayerRadius = 5000.f;
 	
 	// Minimum distance between lightning strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeAvoidance = 2000.f; 
 	
 	// Damage radius of each lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeDamageRadius = 200.f; 
 	
 	// Damage each lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeDamage = 50.f;
 	
 	// Niagara effect for lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningStrikeEffect; 
 	
 	// Niagara effect for lightning telegraph
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningTelegraphEffect;
 	
 	// Damage amount on collision

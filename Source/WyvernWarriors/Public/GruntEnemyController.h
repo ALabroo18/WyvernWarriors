@@ -21,6 +21,10 @@ public:
 	
 	// Called when the controller possesses a pawn
 	virtual void OnPossess(APawn* InPawn) override;
+	
+	// Sets the grunt behavior tree
+	UFUNCTION(Category = "AI")
+	void SetBehaviorTree(UBehaviorTree* NewBehaviorTree) { GruntBehaviorTree = NewBehaviorTree; }
 
 private:
 	// Blackboard component for behavior tree
@@ -30,6 +34,10 @@ private:
 	// Behavior tree for AI logic
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
 	UBehaviorTree* GruntBehaviorTree;
+	
+	// Aggressive behavior tree for the grunt
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))
+	UBehaviorTree* GruntAggressiveTree;
 	
 	// Perception component for sensing the environment
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = true))

@@ -8,6 +8,7 @@
 #include "Components/SplineComponent.h"
 #include "WeaponDropOff.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GruntEnemy.h"
 
 class AEnemyPatrolRoute;
 
@@ -43,8 +44,9 @@ void ABossEnemy::BeginPlay()
 		}
 	}
 	
-	// Temp
-	WeaponDropOff = WeaponDropOffs[FMath::RandRange(0, WeaponDropOffs.Num() - 1)];
+	// Temp; Move to event which changes boss state to move to village
+	GetVillageLocation();
+	// End Temp
 	// Move rest of boss begin play here
 }
 
@@ -95,7 +97,9 @@ void ABossEnemy::DamageForceField()
 		bIsForceFieldActive = false;
 		ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		ForceField->SetVisibility(false);
+		// Temp
 		UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
+		// End Temp
 		OnForceFieldChange.Broadcast(EForceFieldChange::Depleted); // Broadcast depletion of force field
 	}
 	// Broadcast hit to force field state
@@ -185,7 +189,6 @@ void ABossEnemy::DestroySelfEnemy()
  */
 void ABossEnemy::MoveToVillage(float const DeltaTime)
 {
-	FVector const LocationAboveVillage = WeaponDropOff->GetActorLocation() + FVector(0.f, 0.f, 15000.f);
 	FVector DirectionToVillage = LocationAboveVillage - GetActorLocation();
 
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(100.f))
@@ -230,6 +233,58 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 	if (bOnRoute)
 	{
 		CurrentState = ECurrentState::OnPatrolRoute;
+	}
+}
+
+/* Sets the location above the village to approach. Determines if location is feasible through line check before
+ * setting.
+ */
+void ABossEnemy::GetVillageLocation()
+{
+	FHitResult Hit;
+	FCollisionShape const MySphere = FCollisionShape::MakeSphere(500.f);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+	CollisionParams.AddIgnoredActor(PlayerCharacter);
+	
+	TArray<AWeaponDropOff*> ValidWeaponDropOffs = WeaponDropOffs;
+	while (!ValidWeaponDropOffs.IsEmpty())
+	{
+		AWeaponDropOff* WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
+		ValidWeaponDropOffs.Remove(WeaponDropOff);
+		
+		LocationAboveVillage = WeaponDropOff->GetActorLocation() + FVector(0.f, 0.f, 15000.f);
+		GetWorld()->SweepSingleByChannel(
+			Hit,
+			GetActorLocation(),
+			LocationAboveVillage,
+			FQuat::Identity,
+			ECollisionChannel::ECC_WorldStatic,
+			MySphere,
+			CollisionParams
+		);
+		
+		if (!Hit.bBlockingHit)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."))
+			break;
+		}
+	}
+}
+
+/*
+ */
+void ABossEnemy::SummonGruntEnemies()
+{
+	for (int i = 0; i < GruntSummonAmount; i++)
+	{
+		AGruntEnemy* SummonedGrunt = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyClass, GetActorLocation(), FRotator::ZeroRotator);
+		if (IsValid(SummonedGrunt))
+		{
+			SummonedGrunt->InitializeEnemy(0.f, nullptr, false);
+			SummonedGrunt->GetController()->   (GruntAggressiveTree);
+			GruntSummons.Add(SummonedGrunt);
+		}
 	}
 }
 
