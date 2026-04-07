@@ -8,6 +8,7 @@ class ACharacter;
 class UMaterial;
 class UNiagaraSystem;
 class UStaticMeshComponent;
+class AWeaponDropOff;
 
 UENUM(BlueprintType)
 enum class EForceFieldChange : uint8
@@ -15,6 +16,15 @@ enum class EForceFieldChange : uint8
 	Hit UMETA(DisplayName = "Hit"),
 	Depleted UMETA(DisplayName = "Depleted"),
 	Restored UMETA(DisplayName = "Restored")
+};
+
+UENUM(BlueprintType)
+enum class ECurrentState : uint8
+{
+	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
+	GoingToVillage UMETA(DisplayName = "Going towards Village"),
+	Hovering UMETA(DisplayName = "Hovering over Villages"),
+	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, EForceFieldChange, ForceFieldStatus);
@@ -28,9 +38,6 @@ public:
 	// Delegate for force field state change
 	UPROPERTY(BlueprintAssignable, Category = "Force Field")
 	FOnForceFieldChange OnForceFieldChange; 
-	
-	// Moves the enemy along the spline path
-	virtual void MoveAlongSpline(float DeltaTime) override;
 	
 	// Generates unique lightning strike locations around the player
 	TArray<FVector> GenerateLightningStrikeLocations() const;
@@ -56,21 +63,43 @@ public:
 	FVector GetFutureLocation(float const TimePassed) const;
 
 private:
-	//
+	// Sets up boss components
 	ABossEnemy();
 	
 	// Sets up variables
 	virtual void BeginPlay() override;
 	
+	// Ticks the boss behavior based on current state
+	virtual void Tick( float DeltaTime ) override;
+	
 	// Destroys self and completes the wave
 	virtual void DestroySelfEnemy() override;
 	
-	// Timer handles for lightning strike attack and delay
-	FTimerHandle LightningStrikeHandle;
-	FTimerHandle LightningStrikeDelayHandle;
-	
 	// Number of lightning strikes executed
 	int32 StrikesExecuted = 0;
+	
+	// Current state boss is in
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	ECurrentState CurrentState = ECurrentState::OnPatrolRoute;
+	
+	// Moves towards a village to hover over
+	UFUNCTION(Category = "Movement")
+	void MoveToVillage(float const DeltaTime);
+	
+	// Rotates the boss then hovers
+	UFUNCTION(Category = "Movement")
+	void RotateThenHover(float const DeltaTime);
+	
+	// Moves back to patrol route
+	virtual void ReturnToRoute(float const DeltaTime) override;
+	
+	// Array of weapon drop-offs for villages
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	TArray<AWeaponDropOff*> WeaponDropOffs;
+	
+	// Weapon drop off of specific village
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	AWeaponDropOff* WeaponDropOff;
 	
 	// Mesh used for force field visual
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
@@ -99,6 +128,12 @@ private:
 	// Niagara effect for force field restoring
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* ForceFieldRestore;
+	
+	// Timer handles for lightning strike attack and delay
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
+	FTimerHandle LightningStrikeHandle;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
+	FTimerHandle LightningStrikeDelayHandle;
 	
 	// Interval between lightning attacks
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))

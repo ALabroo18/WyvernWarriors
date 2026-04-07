@@ -27,6 +27,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	virtual void MoveAlongSpline(float DeltaTime);
 	
+	// Sets grunt on patrol route if close enough
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void CheckOnPatrolRoute();
+	
+	// Rotates and moves the enemy with the specified rotation, away from actors if provided
+	UFUNCTION(Category = "Movement")
+	virtual void ReturnToRoute(float const DeltaTime);
+	
 	// Initializes enemy variables before spawning
 	UFUNCTION(BlueprintCallable, Category = "Initialization")
 	virtual void InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute);
@@ -48,12 +56,20 @@ public:
 	virtual void DestroySelfEnemy() {};
 
 protected:
-	// Sets up va
+	// Sets up values
 	virtual void BeginPlay() override;
 	
 	// Rotates and moves the enemy with the specified rotation, away from actors if provided
 	UFUNCTION(Category = "Movement")	
 	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
+	
+	// Array of enemies that are within a certain radius
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	TArray<AActor*> NearbyEnemies;
+	
+	// Whether the enemy is currently moving along the patrol route
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bOnRoute = false;
 	
 	// Reference to the player character
 	UPROPERTY()

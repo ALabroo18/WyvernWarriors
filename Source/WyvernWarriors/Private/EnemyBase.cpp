@@ -49,6 +49,13 @@ void AEnemyBase::MoveAlongSpline(float DeltaTime)
 	}
 }
 
+/* Checks if grunt is on patrol route and sets relevant status.
+ */
+void AEnemyBase::CheckOnPatrolRoute()
+{	
+	bOnRoute = FVector::DistSquared(GetActorLocation(), SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World)) < (2000 * 2000);
+}
+
 /* Assigns the patrol route, spline component, distance along spline, and current health of the enemy. Returns early
  * if patrol route is invalid.
  * @param InitialDistance - starting distance along patrol route
@@ -120,11 +127,29 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
     }
 
 	FQuat const DesiredQuat = Rotation.Quaternion();
-	FQuat  const NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); 
+	FQuat const NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); 
 	SetActorRotation(NextRotation);
 	
 	float const RotationDifference = GetActorQuat().AngularDistance(DesiredQuat);
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference));
 	
 	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true);
+}
+
+/* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.
+ * Check if grunt is on patrol route.
+ * @param DeltaTime - float that is time since last tick
+ */
+void AEnemyBase::ReturnToRoute(float const DeltaTime)
+{
+	if (!IsValid(SplineComponent))
+	{
+		return;
+	}
+
+	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
+	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
+	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);
+
+	CheckOnPatrolRoute();
 }

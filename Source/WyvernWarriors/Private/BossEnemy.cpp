@@ -6,11 +6,15 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "NiagaraFunctionLibrary.h"
 #include "Components/SplineComponent.h"
+#include "WeaponDropOff.h"
+#include "Kismet/KismetMathLibrary.h"
 
 class AEnemyPatrolRoute;
 
 #define PLAYER_COLLISION_CHANNEL ECollisionChannel::ECC_GameTraceChannel1
 
+/* Sets tick to true. Sets up force field component and its tick
+ */
 ABossEnemy::ABossEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -20,7 +24,7 @@ ABossEnemy::ABossEnemy()
 	ForceField->bAllowConcurrentTick = false;
 }
 
-/* Sets up health, movement speed, and reference to player.
+/* Sets up health, movement speed, and reference to player. Saves all weapon drop-offs into an array.
  */
 void ABossEnemy::BeginPlay()
 {
@@ -29,30 +33,43 @@ void ABossEnemy::BeginPlay()
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	RestoreForceField();
 	
+	TArray<AActor*> TempActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
+	for (AActor* Actor : TempActors)
+	{
+		if (IsValid(Actor))
+		{
+			WeaponDropOffs.Add(Cast<AWeaponDropOff>(Actor));
+		}
+	}
+	
+	// Temp
+	WeaponDropOff = WeaponDropOffs[FMath::RandRange(0, WeaponDropOffs.Num() - 1)];
 	// Move rest of boss begin play here
 }
 
-// Moves the enemy along the spline path
-void ABossEnemy::MoveAlongSpline(float const DeltaTime)
+/* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
+ * patrol route.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::Tick(float const DeltaTime)
 {
-	// If no spline component, don't move
-	if (!IsValid(SplineComponent))
+	Super::Tick(DeltaTime);
+	
+	switch (CurrentState)
 	{
-		return;
-	}
-	
-	DistanceAlongSpline += FloatingPawnMovement->MaxSpeed * DeltaTime; // Update distance along spline based on movement speed
-	
-	FRotator const SplineRotation = SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new rotation on spline
-	SetActorRotation(SplineRotation); // Rotate enemy to next rotation
-	
-	FVector const SplineLocation = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new location on spline
-	SetActorLocation(SplineLocation); // Move enemy to next location
-	
-	// Reset distance if end of spline reached
-	if (DistanceAlongSpline >= SplineComponent->GetSplineLength())
-	{
-		DistanceAlongSpline -= SplineComponent->GetSplineLength();
+	case ECurrentState::OnPatrolRoute:
+		MoveAlongSpline(DeltaTime);
+		break;
+	case ECurrentState::GoingToVillage:
+		MoveToVillage(DeltaTime);
+		break;
+	case ECurrentState::ReturningToPatrolRoute:
+		ReturnToRoute(DeltaTime);
+		break;
+	case ECurrentState::Hovering:
+		RotateThenHover(DeltaTime);
+		break;
 	}
 }
 
@@ -65,15 +82,14 @@ void ABossEnemy::DamageForceField()
 	// Deactivate force field when health hits 0
 	if (CurrentForceFieldHealth == 0)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
 			ForceFieldBreak,
-			GetActorLocation(),
+			ForceField,
+			NAME_None,
+			FVector::ZeroVector,
 			FRotator::ZeroRotator,
-			FVector(100.f),
-			true,
-			true,
-			ENCPoolMethod::AutoRelease
+			EAttachLocation::SnapToTargetIncludingScale,
+			true
 		);
 		
 		bIsForceFieldActive = false;
@@ -89,27 +105,27 @@ void ABossEnemy::DamageForceField()
 	}
 }
 
-// Reactivates force field and restores its health
+/* Plays niagara effect and turns force field back on. Sets force field health and bool. Broadcast force field change.
+ */
 void ABossEnemy::RestoreForceField()
 {
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			ForceFieldBreak,
-			GetActorLocation(),
+	UNiagaraFunctionLibrary::SpawnSystemAttached(
+			ForceFieldRestore,
+			ForceField,
+			NAME_None,
+			FVector::ZeroVector,
 			FRotator::ZeroRotator,
-			1000000.f * GetActorScale(),
-			true,
-			true,
-			ENCPoolMethod::AutoRelease
+			EAttachLocation::SnapToTargetIncludingScale,
+			true
 		);
-	
-	bIsForceFieldActive = true; // Set force field active
-	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	ForceField->SetVisibility(true); // Hide force field
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
+	// Temp
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
-	
-	CurrentForceFieldHealth = MaxForceFieldHealth; // Set force field health to max
-	OnForceFieldChange.Broadcast(EForceFieldChange::Restored); // Broadcast force field as restored
+	// End Temp
+	bIsForceFieldActive = true;
+	CurrentForceFieldHealth = MaxForceFieldHealth;
+	OnForceFieldChange.Broadcast(EForceFieldChange::Restored);
 }
 
 // Get the distance along the spline in the future
@@ -162,6 +178,59 @@ void ABossEnemy::DestroySelfEnemy()
 	
 	WaveManagerComponent->WaveCompleted(); // Complete the wave when defeated
 	Destroy(); // Destroy self
+}
+
+/* Gets direction towards a location above a village then move and rotate towards it. Changes state to hovering and
+ * exits early if close enough.
+ */
+void ABossEnemy::MoveToVillage(float const DeltaTime)
+{
+	FVector const LocationAboveVillage = WeaponDropOff->GetActorLocation() + FVector(0.f, 0.f, 15000.f);
+	FVector DirectionToVillage = LocationAboveVillage - GetActorLocation();
+
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(100.f))
+	{
+		// Temp
+		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
+		bOnRoute = false; // Move to event that changes state to move to village
+		// End Temp
+		CurrentState = ECurrentState::Hovering;
+		return;
+	}
+	
+	DirectionToVillage.Normalize();
+	RotateAndMove(DirectionToVillage, DeltaTime);
+}
+
+/* Rotates the boss so that it is facing straight forward. Disables tick after rotating.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::RotateThenHover(float const DeltaTime)
+{
+	float const YawValue = GetActorRotation().Yaw;
+	float const RollValue = GetActorRotation().Roll;
+	SetActorRotation(FMath::RInterpTo(GetActorRotation(), FRotator(0.f, YawValue, RollValue), DeltaTime, .5f));
+	if (GetActorRotation().Equals(FRotator(0.f, YawValue, RollValue), .5f))
+	{
+		UE_LOG(LogTemp, Log, TEXT("Done Rotating, now hovering"));
+		SetActorTickEnabled(false);
+		// Temp
+		SetActorTickEnabled(true);
+		CurrentState = ECurrentState::ReturningToPatrolRoute;
+		// End Temp
+	}
+}
+
+/* Call parent ReturnToRoute and change state when back on patrol route.
+ */
+void ABossEnemy::ReturnToRoute(float const DeltaTime)
+{
+	Super::ReturnToRoute(DeltaTime);
+	
+	if (bOnRoute)
+	{
+		CurrentState = ECurrentState::OnPatrolRoute;
+	}
 }
 
 // Generates unique lightning strike locations around the player
