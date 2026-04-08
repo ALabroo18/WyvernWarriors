@@ -81,8 +81,12 @@ private:
 	int32 StrikesExecuted = 0;
 	
 	// Current state boss is in
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	ECurrentState CurrentState = ECurrentState::OnPatrolRoute;
+	
+	// Removes grunt from array and check to change state
+	UFUNCTION(Category = "Behavior")
+	void RemoveGruntFromArray(AGruntEnemy* DeadGrunt);
 	
 	// Moves towards a village to hover over
 	UFUNCTION(Category = "Movement")
@@ -112,7 +116,7 @@ private:
 	UStaticMeshComponent* ForceField;
 	
 	// Is the boss using force field
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	bool bIsForceFieldActive = true;
 	
 	// Time it takes for the force field to restore after being depleted
@@ -120,7 +124,7 @@ private:
 	float TimeToRestoreForceField = 15.f;
 	
 	// Current health of the force fields
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	int CurrentForceFieldHealth = 3;
 	
 	// Max health of the force fields
@@ -128,11 +132,11 @@ private:
 	int MaxForceFieldHealth = 3;
 	
 	// Niagara effect for force field breaking
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* ForceFieldBreak;
 	
 	// Niagara effect for force field restoring
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* ForceFieldRestore;
 	
 	// Summons grunt enemies to attack the player
@@ -148,8 +152,8 @@ private:
 	TSubclassOf<AGruntEnemy> GruntEnemyClass;
 	
 	// Grunt enemies summoned by boss
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
-	int32 GruntSummonAmount;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
+	int32 GruntSummonAmount = 3;
 	
 	// Timer handles for lightning strike attack and delay
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))

@@ -56,6 +56,10 @@ public:
 	
 	// Flee from the character until far enough
 	void FleePlayerCharacter(float const DeltaTime);
+	
+	// Make grunt only use aggressive behavior subtree
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	void UseAggressiveTreeOnly() const;
 
 private:
 	// Sets grunt variables on game start

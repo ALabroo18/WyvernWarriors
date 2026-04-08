@@ -183,3 +183,16 @@ void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
 	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
 }
+
+/* Gets controller for this grunt and runs the aggressive behavior subtree on it.
+ */
+void AGruntEnemy::UseAggressiveTreeOnly() const
+{
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
+		return;
+	}
+	GruntEnemyController->RunAggressiveTree();
+}

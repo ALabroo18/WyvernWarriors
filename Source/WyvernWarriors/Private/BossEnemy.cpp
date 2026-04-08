@@ -1,6 +1,8 @@
 #include "BossEnemy.h"
 #include "GameManagers/GameModeLevel.h"
 #include "GameManagers/Components/WaveManagerComponent.h"
+#include "GameManagers/Components//EnemyManagerComponent.h"
+#include "GameManagers/Components//EventBusComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/FloatingPawnMovement.h"
@@ -25,7 +27,8 @@ ABossEnemy::ABossEnemy()
 	ForceField->bAllowConcurrentTick = false;
 }
 
-/* Sets up health, movement speed, and reference to player. Saves all weapon drop-offs into an array.
+/* Sets up health, movement speed, and reference to player. Saves all weapon drop-offs into an array. Summons grunts
+ * for first state.
  */
 void ABossEnemy::BeginPlay()
 {
@@ -44,9 +47,21 @@ void ABossEnemy::BeginPlay()
 		}
 	}
 	
-	// Temp; Move to event which changes boss state to move to village
-	GetVillageLocation();
-	// End Temp
+	AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel))
+	{
+		return;
+	}
+	
+	UEventBusComponent* EventBus = GameModeLevel->GetEventBusComponent();
+	if (!IsValid(EventBus))
+	{
+		return;
+	}
+	
+	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	
+	SummonGruntEnemies();
 	// Move rest of boss begin play here
 }
 
@@ -184,6 +199,24 @@ void ABossEnemy::DestroySelfEnemy()
 	Destroy(); // Destroy self
 }
 
+/* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
+ * village if no grunts left in array.
+ * @param DeadGrunt - reference to grunt that was destroyed.
+ */
+void ABossEnemy::RemoveGruntFromArray(AGruntEnemy* DeadGrunt)
+{
+	if (GruntSummons.Contains(DeadGrunt))
+	{
+		GruntSummons.Remove(DeadGrunt);
+		
+		if (GruntSummons.IsEmpty())
+		{
+			GetVillageLocation();
+			CurrentState = ECurrentState::GoingToVillage;
+		}
+	}
+}
+
 /* Gets direction towards a location above a village then move and rotate towards it. Changes state to hovering and
  * exits early if close enough.
  */
@@ -272,17 +305,39 @@ void ABossEnemy::GetVillageLocation()
 	}
 }
 
-/*
+/* Summons grunt enemies based on summon amount and makes them be only aggressive. Adds grunts to array to track.
  */
 void ABossEnemy::SummonGruntEnemies()
 {
+	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Incorrect game mode set for level to use boss."))
+		return;
+	}
+	
+	UEnemyManagerComponent* EnemyManagerComponent = GameModeLevel->GetEnemyManagementComponent();
+	if (!IsValid(EnemyManagerComponent))
+	{
+		UE_LOG(LogTemp, Error, TEXT("Incorrect enemy manager to use boss."))
+		return;
+	}
+	
 	for (int i = 0; i < GruntSummonAmount; i++)
 	{
-		AGruntEnemy* SummonedGrunt = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyClass, GetActorLocation(), FRotator::ZeroRotator);
+		float RouteDistance;
+		FTransform GruntSpawnTransform = EnemyManagerComponent->GetGruntSpawnTransform(nullptr, RouteDistance);
+		AGruntEnemy* SummonedGrunt = EnemyManagerComponent->SpawnGruntEnemy(
+			GruntSpawnTransform,
+			0,
+			PatrolRoute,
+			false,
+			false
+			);
 		if (IsValid(SummonedGrunt))
 		{
-			SummonedGrunt->InitializeEnemy(0.f, nullptr, false);
-			SummonedGrunt->GetController()->   (GruntAggressiveTree);
+			UE_LOG(LogTemp, Log, TEXT("Summoned grunt enemy for boss: %s"), *SummonedGrunt->GetName())
+			SummonedGrunt->UseAggressiveTreeOnly();
 			GruntSummons.Add(SummonedGrunt);
 		}
 	}
