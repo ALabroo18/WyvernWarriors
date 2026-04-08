@@ -29,6 +29,7 @@ ACannon::ACannon()
 	
 	ReadyToFireWidget = CreateDefaultSubobject<UWidgetComponent>("Ready To Fire Widget");
 	ReadyToFireWidget->SetupAttachment(RootComponent);
+	ReadyToFireWidget->SetVisibility(false);
 }
 
 /* Calls method that cannon can be loaded
