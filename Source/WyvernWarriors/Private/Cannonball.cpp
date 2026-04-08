@@ -114,6 +114,7 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 void ACannonball::SetAsFired(FRotator const FiringRotation)
 {
 	SetActiveness(true);
+	bHasBeenFired = true;
 	ProjectileMovement->Velocity = FiringRotation.Vector() * ProjectileMovement->GetMaxSpeed();
 	ProjectileMovement->Activate();
 }

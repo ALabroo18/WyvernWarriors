@@ -32,9 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Wave Event")
 	void SetCannonsBoss(ABossEnemy* BossEnemy);
 	
-	// Sets cannon(s) as fireable or not depending on boss force field
+	// Sets cannon as fireable or not depending on boss state
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void ChangeCannonFireable(EBossState const NewBossState);
+	void ChangeCannonFireable(EBossState NewBossState);
 
 private:
 	// Set a random cannon as able to fire

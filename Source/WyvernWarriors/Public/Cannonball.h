@@ -70,4 +70,8 @@ private:
 	// Material used to indicate location
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannonball", meta = (AllowPrivateAccess = true))
 	UMaterial* HighlightMaterial;
+	
+	// Bool for if cannonball has been fired
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannonball", meta = (AllowPrivateAccess = true))
+	bool bHasBeenFired = false;
 };

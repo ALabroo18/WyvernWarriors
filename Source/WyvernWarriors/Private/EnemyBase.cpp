@@ -106,6 +106,7 @@ void AEnemyBase::BeginPlay()
  */
 void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid)
 {
+
 	if (!ActorsToAvoid.IsEmpty())
 	{
 		FVector DirectionAwaySum = FVector::Zero();
@@ -118,7 +119,7 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
 		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
 		Direction = (Direction + DirectionAway).GetSafeNormal();
 	}
-	
+
 	FRotator Rotation = Direction.Rotation();
 	
 	if (GetActorLocation().Z < .0f && Rotation.Pitch < .0f)
@@ -142,11 +143,8 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
  */
 void AEnemyBase::ReturnToRoute(float const DeltaTime)
 {
-	if (!IsValid(SplineComponent))
-	{
-		return;
-	}
-
+	if (!IsValid(SplineComponent)) { UE_LOG(LogTemp, Error, TEXT("Invalid spline component for enemy to return to route.")); return; }
+	
 	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
 	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
 	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);

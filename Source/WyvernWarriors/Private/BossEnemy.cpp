@@ -7,7 +7,6 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "NiagaraFunctionLibrary.h"
-#include "Components/SplineComponent.h"
 #include "WeaponDropOff.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GruntEnemy.h"
@@ -25,17 +24,25 @@ ABossEnemy::ABossEnemy()
 	ForceField = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ForceField"));
 	ForceField->SetupAttachment(SkeletalMesh);
 	ForceField->bAllowConcurrentTick = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
 }
 
-/* Sets up health, movement speed, and reference to player. Saves all weapon drop-offs into an array. Summons grunts
- * for first state.
+/* Sets up health, movement speed, and reference to event bus. Restores force field and binds function to grunt death.
+ * Saves all weapon drop-offs into an array. Summons grunts for first state.
  */
 void ABossEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel)) return;
+	EventBus = GameModeLevel->GetEventBusComponent();
+	if (!IsValid(EventBus)) return;
+	
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
-	RestoreForceField();
+	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
 	
 	TArray<AActor*> TempActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
@@ -47,15 +54,7 @@ void ABossEnemy::BeginPlay()
 		}
 	}
 	
-	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameModeLevel)) return;
-	
-	EventBus = GameModeLevel->GetEventBusComponent();
-	if (!IsValid(EventBus)) return;
-	
-	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
-	
-	SummonGruntEnemies();
+	// SummonGruntEnemies();
 	// Move rest of boss begin play here
 }
 
@@ -71,6 +70,7 @@ void ABossEnemy::Tick(float const DeltaTime)
 	{
 	case EBossState::OnPatrolRoute:
 		MoveAlongSpline(DeltaTime);
+		StartApproachVillage();
 		break;
 	case EBossState::ApproachVillage:
 		ApproachVillage(DeltaTime);
@@ -84,41 +84,37 @@ void ABossEnemy::Tick(float const DeltaTime)
 	}
 }
 
-// Deals damage to force field and deactivates at 0 health
-void ABossEnemy::DamageForceField()
+/* Spawn force field break niagara system then set force field inactive in collision and visibility. Broadcast force
+ * field change.
+ */
+void ABossEnemy::DestroyForceField()
 {
-	CurrentForceFieldHealth--; // Reduce health
-	CurrentForceFieldHealth = FMath::Clamp(CurrentForceFieldHealth, 0, MaxForceFieldHealth); // Clamp health to correct values
-
-	// Deactivate force field when health hits 0
-	if (CurrentForceFieldHealth == 0)
-	{
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			ForceFieldBreak,
-			ForceField,
-			NAME_None,
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTargetIncludingScale,
-			true
-		);
-		
-		bIsForceFieldActive = false;
-		ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		ForceField->SetVisibility(false);
-		// Temp
-		UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
-		// End Temp
-		OnForceFieldChange.Broadcast(EForceFieldChange::Depleted); // Broadcast depletion of force field
-	}
-	// Broadcast hit to force field state
-	else
-	{
-		OnForceFieldChange.Broadcast(EForceFieldChange::Hit); 
-	}
+	UNiagaraFunctionLibrary::SpawnSystemAttached(
+		ForceFieldBreak,
+		ForceField,
+		NAME_None,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		EAttachLocation::SnapToTargetIncludingScale,
+		true
+	);
+	
+	bIsForceFieldActive = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ForceField->SetVisibility(false);
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
+	EventBus->OnForceFieldChange.Broadcast(false); 
+	GetWorldTimerManager().SetTimer(
+		ForceFieldRestoreHandle,
+		this,
+		&ABossEnemy::RestoreForceField,
+		TimeToRestoreForceField,
+		false
+	);
 }
 
-/* Plays niagara effect and turns force field back on. Sets force field health and bool. Broadcast force field change.
+/* Plays force field restored niagara effect and sets force field active with collision and visibility. Broadcast
+ * force field change.
  */
 void ABossEnemy::RestoreForceField()
 {
@@ -133,27 +129,11 @@ void ABossEnemy::RestoreForceField()
 		);
 	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	ForceField->SetVisibility(true);
-	// Temp
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
-	// End Temp
 	bIsForceFieldActive = true;
-	CurrentForceFieldHealth = MaxForceFieldHealth;
-	OnForceFieldChange.Broadcast(EForceFieldChange::Restored);
-}
-
-// Get the distance along the spline in the future
-FVector ABossEnemy::GetFutureLocation(float const TimePassed) const
-{
-	float FutureSplineDistance = DistanceAlongSpline + (TimePassed * FloatingPawnMovement->MaxSpeed); // Get Distance in time passed seconds
-	float const SplineLength = SplineComponent->GetSplineLength(); // Get spline length
 	
-	// If longer than spline length, subtract until shorter
-	while (FutureSplineDistance > SplineLength)
-	{
-		FutureSplineDistance -= SplineLength;
-	}
-	
-	return SplineComponent->GetLocationAtDistanceAlongSpline(FutureSplineDistance, ESplineCoordinateSpace::World); // Return the world space at that distance
+	EventBus->OnForceFieldChange.Broadcast(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
 
 // Performs a lightning strike attack on the player
@@ -221,9 +201,9 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
 	FVector DirectionToVillage = LocationAboveVillage - GetActorLocation();
 
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(100.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(500.f))
 	{
-		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state.")); // Temp
+		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
 		CurrentState = EBossState::Hovering;
 		EventBus->OnBossStateChange.Broadcast(CurrentState);
 		return;
@@ -245,14 +225,11 @@ void ABossEnemy::RotateThenHover(float const DeltaTime)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Done Rotating, now hovering"));
 		SetActorTickEnabled(false);
-		// Temp
-		SetActorTickEnabled(true);
-		CurrentState = EBossState::ReturningToPatrolRoute;
-		// End Temp
 	}
 }
 
 /* Call parent ReturnToRoute and change state when back on patrol route.
+ * @param DeltaTime - time since last frame.
  */
 void ABossEnemy::ReturnToRoute(float const DeltaTime)
 {
@@ -271,7 +248,7 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 void ABossEnemy::GetVillageLocation()
 {
 	FHitResult Hit;
-	FCollisionShape const MySphere = FCollisionShape::MakeSphere(500.f);
+	FCollisionShape const MySphere = FCollisionShape::MakeSphere(2000.f);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
 	CollisionParams.AddIgnoredActor(PlayerCharacter);

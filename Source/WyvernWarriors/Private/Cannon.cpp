@@ -126,39 +126,17 @@ void ACannon::SetUnloadable()
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-// Rotate the cannon to fire at where the boss will be
+/* Gets rotation towards boss then rotates full cannon yaw towards boss and cannon barrel roll towards boss.
+ * @return FRotator - The rotation from the cannon location to face the boss.
+ */
 FRotator ACannon::SetFiringRotation()
 {
-	FVector const CurrentLocation = GetActorLocation(); // Get actor location
-	float const CannonballSpeed = Cannonball->GetProjectileSpeed(); // Get cannonball speed
-	float PreviousDistance = 0.f; // Variable for distance of previous trial
+	FRotator const RotationTowardsBoss = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), BossEnemy->GetActorLocation()); 
+	FRotator CurrentRotation = GetActorRotation();
+	CurrentRotation.Yaw = RotationTowardsBoss.Yaw;
+	SetActorRotation(CurrentRotation);
 	
-	float DistanceToBoss = UKismetMathLibrary::Vector_Distance(CurrentLocation, BossEnemy->GetActorLocation()); // Get distance to current boss location
-	float TravelTime = DistanceToBoss / CannonballSpeed; // Get travel time of cannonball to get to current boss location
-	FVector TargetLocation = BossEnemy->GetFutureLocation(TravelTime); // Get future boss location after time of travel
-	
-	// Continuously get travel time to future boss location until same distance is gotten.
-	for (int i = 0; i < 75; i++)
-	{
-		float const PrePreviousDistance = PreviousDistance; // Variable for the distance of the trial before the previous trial
-		PreviousDistance = DistanceToBoss; // Update previous trial distance
-		DistanceToBoss = UKismetMathLibrary::Vector_Distance(CurrentLocation, TargetLocation); // Set distance to current future boss location
-		TravelTime = DistanceToBoss / CannonballSpeed; // Set travel time to get to current future boss location
-		TargetLocation = BossEnemy->GetFutureLocation(TravelTime); // Get the next future boss's location given the current travel time
-		
-		// Break when a future boss's distance matches a previous trial
-		if (PreviousDistance == DistanceToBoss || PrePreviousDistance == DistanceToBoss)
-		{
-			break;
-		}
-	}
-	
-	FRotator const RotationTowardsBoss = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation); // Rotation towards's future boss's location
-	FRotator CurrentRotation = GetActorRotation(); // Get current cannon rotation
-	CurrentRotation.Yaw = RotationTowardsBoss.Yaw; // Change cannon yaw rotation
-	SetActorRotation(CurrentRotation); // Rotate entire cannon yaw towards boss
-	
-	FRotator const CurrentTopRotation = FRotator(0.0, -90.0, -RotationTowardsBoss.Pitch); // Set cannon top rotation to align with boss and bottom
-	CannonTopMesh->SetRelativeRotation(CurrentTopRotation); // Rotate cannon top roll towards boss
+	FRotator const CurrentTopRotation = FRotator(0.0, -90.0, -RotationTowardsBoss.Pitch);
+	CannonTopMesh->SetRelativeRotation(CurrentTopRotation);
 	return RotationTowardsBoss;
 }

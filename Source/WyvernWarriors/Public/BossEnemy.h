@@ -14,14 +14,6 @@ class UStaticMeshComponent;
 class AWeaponDropOff;
 
 UENUM(BlueprintType)
-enum class EForceFieldChange : uint8
-{
-	Hit UMETA(DisplayName = "Hit"),
-	Depleted UMETA(DisplayName = "Depleted"),
-	Restored UMETA(DisplayName = "Restored")
-};
-
-UENUM(BlueprintType)
 enum class EBossState : uint8
 {
 	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
@@ -30,18 +22,12 @@ enum class EBossState : uint8
 	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route")
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, EForceFieldChange, ForceFieldStatus);
-
 UCLASS()
 class WYVERNWARRIORS_API ABossEnemy : public AEnemyBase
 {
 	GENERATED_BODY()
 
 public:
-	// Delegate for force field state change
-	UPROPERTY(BlueprintAssignable, Category = "Force Field")
-	FOnForceFieldChange OnForceFieldChange; 
-	
 	// Generates unique lightning strike locations around the player
 	TArray<FVector> GenerateLightningStrikeLocations() const;
 	
@@ -56,14 +42,11 @@ public:
 	
 	// Deals damage to force field and deactivates at 0 health
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
-	void DamageForceField();
+	void DestroyForceField();
 	
 	// Reactivates force field and restores its health
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
 	void RestoreForceField();
-	
-	// Get the distance along the spline in the future
-	FVector GetFutureLocation(float const TimePassed) const;
 
 private:
 	// Sets up boss components
@@ -117,6 +100,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UStaticMeshComponent* ForceField;
 	
+	// Timer handle for restoring force field
+	UPROPERTY(BlueprintReadonly, Category = "Force Field", meta = (AllowPrivateAccess = true))
+	FTimerHandle ForceFieldRestoreHandle;
+	
 	// Is the boss using force field
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	bool bIsForceFieldActive = true;
@@ -124,14 +111,6 @@ private:
 	// Time it takes for the force field to restore after being depleted
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	float TimeToRestoreForceField = 15.f;
-	
-	// Current health of the force fields
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
-	int CurrentForceFieldHealth = 3;
-	
-	// Max health of the force fields
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
-	int MaxForceFieldHealth = 3;
 	
 	// Niagara effect for force field breaking
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
