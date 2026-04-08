@@ -18,9 +18,13 @@ class WYVERNWARRIORS_API ACannon : public AActor
 	GENERATED_BODY()
 
 public:
-	// Set's whether the cannon is ready to fire
+	// Sets the cannon as able to be loaded
 	UFUNCTION(Category = "Cannon")
-	void SetLoadable(bool const bCanLoad);
+	void SetLoadable();
+	
+	// Sets the cannon as unable to be loaded
+	UFUNCTION(Category = "Cannon")
+	void SetUnloadable();
 	
 	// Get whether the cannon is ready to fire
 	bool GetFirable() const { return bCanBeLoaded; } 
@@ -32,6 +36,10 @@ public:
 	// Set's the boss enemy for the cannon
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
 	void SetBoss(ABossEnemy* Boss) { BossEnemy = Boss; }
+	
+	// Gets distance squared to boss.
+	UFUNCTION(BlueprintCallable, Category = "Cannon")
+	float GetDistanceToBossSquared();
 	
 private:
 	// Sets default values for this actor's properties and binds delegates

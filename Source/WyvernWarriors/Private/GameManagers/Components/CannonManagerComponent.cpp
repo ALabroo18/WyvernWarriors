@@ -7,6 +7,7 @@
 #include "GameManagers/Components/EnemyManagerComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "ActivatableInterface.h"
+#include "EventBusComponent.h"
 
 // Set cannon activatables activeness
 void UCannonManagerComponent::SetCannonActivatables(bool const bBecomeActive)
@@ -22,19 +23,20 @@ void UCannonManagerComponent::SetCannonActivatables(bool const bBecomeActive)
 	}
 }
 
-// Sets cannon(s) as fireable or not depending on boss force field
-void UCannonManagerComponent::ChangeCannonsFireable(EForceFieldChange const ForceFieldChange)
+/* Sets cannon as loadable when boss is hovering and sets unloadable when boss is returning to patrol route.
+ * @param NewBossState - The state that the boss is currently in.
+ */
+void UCannonManagerComponent::ChangeCannonFireable(EBossState const NewBossState)
 {
-	switch (ForceFieldChange)
+	switch (NewBossState)
 	{
-	case EForceFieldChange::Hit:
-		SetCannonLoadable(true);
+	case EBossState::Hovering:
+		SetCannonLoadable();
 		break;
-	case EForceFieldChange::Depleted:
-		SetMultipleCannonsLoadable(false, ActiveCannons.Num());
+	case EBossState::ReturningToPatrolRoute:
+		SetCannonUnloadable();
 		break;
-	case EForceFieldChange::Restored:
-		SetMultipleCannonsLoadable(true, MaxActiveCannons);
+	default:
 		break;
 	}
 }
@@ -47,14 +49,14 @@ void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 {
 	if (bIsFinalWave)
 	{
+		const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetOwner())->GetEventBusComponent();
+		EventBus->OnBossStateChange.AddDynamic(this, &UCannonManagerComponent::ChangeCannonFireable);
 		
 		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent();
 		ABossEnemy* BossEnemy = EnemyManager->GetBossEnemy();
-		BossEnemy->OnForceFieldChange.AddDynamic(this, &UCannonManagerComponent::ChangeCannonsFireable);
+		SetCannonsBoss(BossEnemy);
 		
 		SetCannonActivatables(true);
-		SetCannonsBoss(BossEnemy);
-		SetMultipleCannonsLoadable(true, MaxActiveCannons);
 	}
 }
 
@@ -93,63 +95,56 @@ void UCannonManagerComponent::SetupCannonManager()
 	{
 		if (IsValid(TempActor))
 		{
-			InactiveCannons.Add(Cast<ACannon>(TempActor));
+			Cannons.Add(Cast<ACannon>(TempActor));
 		}
 	}
 	
 	SetCannonActivatables((false)); // Set cannonballs and stacks as inactive at start of level
 }
 
-
-/* Sets a random cannon as able to be loaded or not. Moves cannon between active and inactive arrays and sets cannon
- * as loadable based on input.
- * @param bCanLoad - Whether the cannon should be able to be loaded or not
+/* Sets the boss enemy reference for all cannons.
+ * @param BossEnemy - Reference to the boss enemy.
  */
-void UCannonManagerComponent::SetCannonLoadable(bool const bCanload)
-{
-	if (InactiveCannons.IsEmpty())
-	{
-		return;
-	}
-	
-	ACannon* CannonToFire;
-	
-	if (bCanload)
-	{
-	    CannonToFire = InactiveCannons[FMath::RandRange(0, InactiveCannons.Num() - 1)];
-		InactiveCannons.Remove(CannonToFire);
-		ActiveCannons.Add(CannonToFire);
-	}
-	else
-	{
-	    CannonToFire = ActiveCannons[FMath::RandRange(0, ActiveCannons.Num() - 1)];
-		ActiveCannons.Remove(CannonToFire);
-		InactiveCannons.Add(CannonToFire);
-	}
-	
-	CannonToFire->SetLoadable(bCanload);
-}
-
-/* Sets multiple cannons as able to be loaded.
- * @param bCanLoad - Whether the cannons should be able to be loaded or not
- * @param NumberOfCannons - The number of cannons to set as able to be loaded
-*/
-void UCannonManagerComponent::SetMultipleCannonsLoadable(bool const bCanLoad, int32 const NumberOfCannons)
-{
-	for (int i = 0; i < NumberOfCannons; i++)
-	{
-		SetCannonLoadable(bCanLoad);
-	}
-}
-
-// Sets boss enemy for cannons to target
 void UCannonManagerComponent::SetCannonsBoss(ABossEnemy* BossEnemy)
 {
-	for (ACannon* Cannon : InactiveCannons)
+	for (ACannon* Cannon : Cannons)
 	{
-		if (IsValid(Cannon))
+		Cannon->SetBoss(BossEnemy);
+	}
+}
+
+/* Sets cannon closest to the boss as loadable and sets boss reference. Exits early if there are no cannons.
+ */
+void UCannonManagerComponent::SetCannonLoadable()
+{
+	if (Cannons.IsEmpty()) { UE_LOG(LogTemp, Log, TEXT("There are no cannons in the level.")); return; }
+	
+	ActiveCannon = GetCannonClosestToBoss();
+	ActiveCannon->SetLoadable();
+}
+
+/* Sets the active cannon as unloadable.
+ */
+void UCannonManagerComponent::SetCannonUnloadable() const
+{
+	ActiveCannon->SetUnloadable();
+}
+
+/* Loops through cannons and gets their distance to the boss. Sets the cannon and distance when distance is lowest.
+ * @return ACannon* - The cannon closest to the boss.
+ */
+ACannon* UCannonManagerComponent::GetCannonClosestToBoss()
+{
+	float ClosestDistanceToBoss = BIG_NUMBER;
+	ACannon* ClosestToBoss = nullptr;
+	for (ACannon* Cannon : Cannons)
+	{
+		if (float const CannonDistanceToBoss = Cannon->GetDistanceToBossSquared(); CannonDistanceToBoss < ClosestDistanceToBoss)
 		{
-			Cannon->SetBoss(BossEnemy);
+			ClosestDistanceToBoss = CannonDistanceToBoss;
+			ClosestToBoss = Cannon;
 		}
 	}
+	
+	return ClosestToBoss;
 }

@@ -14,6 +14,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWaveComplete, bool, bIsFinalWave)
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCannonCanBeLoaded, bool, bCanBeLoaded, ACannon*, CannonToBeLoaded); // Delegate for wave completion event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCutsceneEvent, bool, bIsHappening); // Delegate for when cutscene happens
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGruntDeath, AGruntEnemy*, DeadGrunt); // Delegate for when grunt enemy dies
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBossStateChange, ECurrentState, BossState); // Delegate for boss state changes
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent
@@ -44,6 +45,10 @@ public:
 	// Delegate for when grunt enemy dies
 	UPROPERTY(BlueprintAssignable, Category = "Enemy")
 	FOnGruntDeath OnGruntDeath;
+	
+	// Delegate for when grunt enemy dies
+	UPROPERTY(BlueprintAssignable, Category = "Enemy")
+	FOnBossStateChange OnBossStateChange;
 
 private:	
 	// Sets default values for this component's properties

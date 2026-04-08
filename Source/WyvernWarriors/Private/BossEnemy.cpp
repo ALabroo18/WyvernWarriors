@@ -47,17 +47,11 @@ void ABossEnemy::BeginPlay()
 		}
 	}
 	
-	AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameModeLevel))
-	{
-		return;
-	}
+	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel)) return;
 	
-	UEventBusComponent* EventBus = GameModeLevel->GetEventBusComponent();
-	if (!IsValid(EventBus))
-	{
-		return;
-	}
+	EventBus = GameModeLevel->GetEventBusComponent();
+	if (!IsValid(EventBus)) return;
 	
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
 	
@@ -75,16 +69,16 @@ void ABossEnemy::Tick(float const DeltaTime)
 	
 	switch (CurrentState)
 	{
-	case ECurrentState::OnPatrolRoute:
+	case EBossState::OnPatrolRoute:
 		MoveAlongSpline(DeltaTime);
 		break;
-	case ECurrentState::GoingToVillage:
-		MoveToVillage(DeltaTime);
+	case EBossState::ApproachVillage:
+		ApproachVillage(DeltaTime);
 		break;
-	case ECurrentState::ReturningToPatrolRoute:
+	case EBossState::ReturningToPatrolRoute:
 		ReturnToRoute(DeltaTime);
 		break;
-	case ECurrentState::Hovering:
+	case EBossState::Hovering:
 		RotateThenHover(DeltaTime);
 		break;
 	}
@@ -165,16 +159,14 @@ FVector ABossEnemy::GetFutureLocation(float const TimePassed) const
 // Performs a lightning strike attack on the player
 void ABossEnemy::AttackPlayer()
 {
-	if (PlayerCharacter == nullptr) return; // Early out if no player found
-
-	StrikesExecuted = 0; // Reset strike count
+	if (!IsValid(PlayerCharacter)) return; // Early out if no player found
 
 	GetWorldTimerManager().SetTimer(
 		LightningStrikeHandle,
 		this,
 		&ABossEnemy::TelegraphLightningStrikes,
-		LightningAttackBurstInterval,
-		StrikesExecuted < 3
+		LightningAttackInterval,
+		true
 	);
 }
 
@@ -183,17 +175,11 @@ void ABossEnemy::DestroySelfEnemy()
 {
 	// Get reference to the game mode
 	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameMode))
-	{
-		return;
-	}
+	if (!IsValid(GameMode)) return;
 	
 	// Get reference to the wave manager
 	UWaveManagerComponent* WaveManagerComponent = Cast<UWaveManagerComponent>(GameMode->GetWaveManagementComponent());
-	if (!IsValid(WaveManagerComponent))
-	{
-		return;
-	}
+	if (!IsValid(WaveManagerComponent)) return;
 	
 	WaveManagerComponent->WaveCompleted(); // Complete the wave when defeated
 	Destroy(); // Destroy self
@@ -211,26 +197,35 @@ void ABossEnemy::RemoveGruntFromArray(AGruntEnemy* DeadGrunt)
 		
 		if (GruntSummons.IsEmpty())
 		{
-			GetVillageLocation();
-			CurrentState = ECurrentState::GoingToVillage;
+			StartApproachVillage();
 		}
 	}
 }
 
+/* Get village to approach and change state to approach village state. Broadcast the state change then start attacking
+ * the player.
+ */
+void ABossEnemy::StartApproachVillage()
+{
+	GetVillageLocation();
+	CurrentState = EBossState::ApproachVillage;
+	bOnRoute = false;
+	AttackPlayer();
+}
+
 /* Gets direction towards a location above a village then move and rotate towards it. Changes state to hovering and
  * exits early if close enough.
+ * @param DeltaTime - time since last tick.
  */
-void ABossEnemy::MoveToVillage(float const DeltaTime)
+void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
 	FVector DirectionToVillage = LocationAboveVillage - GetActorLocation();
 
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(100.f))
 	{
-		// Temp
-		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
-		bOnRoute = false; // Move to event that changes state to move to village
-		// End Temp
-		CurrentState = ECurrentState::Hovering;
+		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state.")); // Temp
+		CurrentState = EBossState::Hovering;
+		EventBus->OnBossStateChange.Broadcast(CurrentState);
 		return;
 	}
 	
@@ -239,7 +234,7 @@ void ABossEnemy::MoveToVillage(float const DeltaTime)
 }
 
 /* Rotates the boss so that it is facing straight forward. Disables tick after rotating.
- * @param DeltaTime - time since last frame.
+ * @param DeltaTime - time since last tick.
  */
 void ABossEnemy::RotateThenHover(float const DeltaTime)
 {
@@ -252,7 +247,7 @@ void ABossEnemy::RotateThenHover(float const DeltaTime)
 		SetActorTickEnabled(false);
 		// Temp
 		SetActorTickEnabled(true);
-		CurrentState = ECurrentState::ReturningToPatrolRoute;
+		CurrentState = EBossState::ReturningToPatrolRoute;
 		// End Temp
 	}
 }
@@ -265,7 +260,8 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 	
 	if (bOnRoute)
 	{
-		CurrentState = ECurrentState::OnPatrolRoute;
+		CurrentState = EBossState::OnPatrolRoute;
+		SummonGruntEnemies();
 	}
 }
 
@@ -349,12 +345,12 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 	TArray<FVector> StrikeLocations;
 	FVector PossibleStrikeLocation;
 
-	int32 const NumberOfStrikes = FMath::RandRange(3, 5); // Number of lightning strikes
+	int32 const NumberOfStrikes = FMath::RandRange(MinLightningStrikes, MaxLightningStrikes); // Number of lightning strikes
 
 	// Get player location x and y
-	FVector const PlayerLocation = PlayerCharacter->GetActorLocation();
-	float const PlayerX = PlayerLocation.X; 
-	float const PlayerY = PlayerLocation.Y;
+	FVector const FuturePlayerLocation = PlayerCharacter->GetActorLocation() + (PlayerCharacter->GetVelocity() * LightningAttackStrikeDelay);
+	float const PlayerX = FuturePlayerLocation.X; 
+	float const PlayerY = FuturePlayerLocation.Y;
 
 	int32 Attempts = 0; // Counter to prevent infinite loops
 	int32 ConfirmedStrikes = 0; // Counter for strikes that will be doneS
@@ -365,7 +361,7 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 		bool bTooClose = false;
 		PossibleStrikeLocation.X = FMath::RandRange(PlayerX - LightningStrikePlayerRadius, PlayerX + LightningStrikePlayerRadius); // Random x within radius
 		PossibleStrikeLocation.Y = FMath::RandRange(PlayerY - LightningStrikePlayerRadius, PlayerY + LightningStrikePlayerRadius); // Random y within radius
-		PossibleStrikeLocation.Z = PlayerLocation.Z; // Set z to player z
+		PossibleStrikeLocation.Z = FuturePlayerLocation.Z; // Set z to player z
 
 		for (const FVector& ExistingStrikeLocation : StrikeLocations)
 		{
@@ -423,10 +419,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 // Executes the lightning strikes at the specified locations
 void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations)
 {
-	StrikesExecuted++; // Increment strike count
-
 	FHitResult HitResult; // Hit result for collision detection
-
 	FCollisionQueryParams CollisionParams; // Collision query parameters
 	CollisionParams.bTraceComplex = false; // Don't use complex collision
 	CollisionParams.bReturnPhysicalMaterial = false; // No need for physical material

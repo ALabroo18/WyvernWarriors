@@ -4,7 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "CannonManagerComponent.generated.h"
 
-enum class EForceFieldChange : uint8;
+enum class EBossState : uint8;
 class ABossEnemy;
 class ACannon;
 class UWaveManagerComponent;
@@ -17,36 +17,37 @@ class WYVERNWARRIORS_API UCannonManagerComponent : public UActorComponent
 
 public:
 	// Set cannon activatables activeness
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
+	UFUNCTION(BlueprintCallable, Category = "Wave Event")
 	void SetCannonActivatables(bool const bBecomeActive);
-	
-	// Sets boss enemy for cannons to target
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetCannonsBoss(ABossEnemy* BossEnemy);
-
-	// Sets multiple random cannons as able to fire at the boss
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetMultipleCannonsLoadable(bool const bCanLoad, int32 const NumberOfCannons);
-
-	// Returns the maximum amount of active cannons
-	int32 GetMaxActiveCannons() const {return MaxActiveCannons; };
-
-	// Sets cannon(s) as fireable or not depending on boss force field
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void ChangeCannonsFireable(EForceFieldChange const ForceFieldChange);
 
 	// Sets up cannons and cannonball stacks for final wave
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
+	UFUNCTION(BlueprintCallable, Category = "Wave Event")
 	void OnNewWave(bool const bIsFinalWave);
 	
 	// Sets the starting variables for cannon management
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
+	UFUNCTION(BlueprintCallable, Category = "Wave Event")
 	void SetupCannonManager();
+	
+	// Sets boss reference for cannons.
+	UFUNCTION(BlueprintCallable, Category = "Wave Event")
+	void SetCannonsBoss(ABossEnemy* BossEnemy);
+	
+	// Sets cannon(s) as fireable or not depending on boss force field
+	UFUNCTION(BlueprintCallable, Category = "Cannons")
+	void ChangeCannonFireable(EBossState const NewBossState);
 
 private:
-	// Set a random cannon as able to fire at the boss
+	// Set a random cannon as able to fire
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void SetCannonLoadable(bool const bCanload);
+	void SetCannonLoadable();
+	
+	// Set a random cannon as unable to fire
+	UFUNCTION(BlueprintCallable, Category = "Cannons")
+	void SetCannonUnloadable() const;
+	
+	// Gets the cannon closest to the boss.
+	UFUNCTION(Category = "Cannons")
+	ACannon* GetCannonClosestToBoss();
 
 	// Array of activatable cannon objects
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
@@ -54,13 +55,9 @@ private:
 	
 	// Reference to inactive cannons
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
-	TArray<ACannon*> InactiveCannons;
+	TArray<ACannon*> Cannons;
 	
-	// Reference to active cannons
+	// Reference to active cannon
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
-	TArray<ACannon*> ActiveCannons;
-
-	// Maximum amount of active cannons at once
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
-	int32 MaxActiveCannons = 3;
+	ACannon* ActiveCannon;
 };

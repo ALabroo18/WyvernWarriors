@@ -4,6 +4,7 @@
 #include "EnemyBase.h"
 #include "BossEnemy.generated.h"
 
+class UEventBusComponent;
 class UBehaviorTree;
 class AGruntEnemy;
 class ACharacter;
@@ -21,10 +22,10 @@ enum class EForceFieldChange : uint8
 };
 
 UENUM(BlueprintType)
-enum class ECurrentState : uint8
+enum class EBossState : uint8
 {
 	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
-	GoingToVillage UMETA(DisplayName = "Going towards Village"),
+	ApproachVillage UMETA(DisplayName = "Approaching Village"),
 	Hovering UMETA(DisplayName = "Hovering over Villages"),
 	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route")
 };
@@ -77,20 +78,21 @@ private:
 	// Destroys self and completes the wave
 	virtual void DestroySelfEnemy() override;
 	
-	// Number of lightning strikes executed
-	int32 StrikesExecuted = 0;
+	// Reference to the event bus
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Game Managers", meta = (AllowPrivateAccess = true))
+	UEventBusComponent* EventBus;
 	
 	// Current state boss is in
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	ECurrentState CurrentState = ECurrentState::OnPatrolRoute;
+	EBossState CurrentState = EBossState::OnPatrolRoute;
 	
-	// Removes grunt from array and check to change state
+	// Change to approach village state
 	UFUNCTION(Category = "Behavior")
-	void RemoveGruntFromArray(AGruntEnemy* DeadGrunt);
+	void StartApproachVillage();
 	
 	// Moves towards a village to hover over
 	UFUNCTION(Category = "Movement")
-	void MoveToVillage(float const DeltaTime);
+	void ApproachVillage(float const DeltaTime);
 	
 	// Rotates the boss then hovers
 	UFUNCTION(Category = "Movement")
@@ -143,6 +145,10 @@ private:
 	UFUNCTION(Category = "Summons")
 	void SummonGruntEnemies();
 	
+	// Removes grunt from array and check to change state
+	UFUNCTION(Category = "Summons")
+	void RemoveGruntFromArray(AGruntEnemy* DeadGrunt);
+	
 	// Grunt enemies summoned by boss
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Summons", meta = (AllowPrivateAccess = true))
 	TArray<AGruntEnemy*> GruntSummons;
@@ -161,43 +167,45 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	FTimerHandle LightningStrikeDelayHandle;
 	
-	// Interval between lightning attacks
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
-	float LightningAttackInterval = 15.f;
+	// Range for amount of lightnings strikes
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	int32 MinLightningStrikes = 5;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	int32 MaxLightningStrikes = 7;
 	
-	// Interval between lightning attack bursts
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
-	float LightningAttackBurstInterval = 3.f;
+	// Interval between lightning attacks
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	float LightningAttackInterval = 5.f;
 	
 	// Delay after telegraph before executing strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
-	float LightningAttackStrikeDelay = 2.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	float LightningAttackStrikeDelay = 3.f;
 	
 	// Radius around player for lightning strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikePlayerRadius = 5000.f;
 	
 	// Minimum distance between lightning strikes
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeAvoidance = 2000.f; 
 	
 	// Damage radius of each lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeDamageRadius = 200.f; 
 	
 	// Damage each lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	float LightningStrikeDamage = 50.f;
 	
 	// Niagara effect for lightning strike
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningStrikeEffect; 
 	
 	// Niagara effect for lightning telegraph
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lightning", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lightning", meta = (AllowPrivateAccess = true))
 	UNiagaraSystem* LightningTelegraphEffect;
 	
 	// Damage amount on collision
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (AllowPrivateAccess = true))
 	float CollisionDamageAmount = 75.f;
 };

@@ -48,6 +48,14 @@ void ACannon::OnCannonOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Ot
 	SetCanLoadCannon(false, OtherActor);
 }
 
+/* Gets the vector distance squared between the cannon and the boss.
+ * @return float - Distance to the boss squared.
+ */
+float ACannon::GetDistanceToBossSquared()
+{
+	return UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossEnemy->GetActorLocation());
+}
+
 /* Sets or unsets cannonball to be loaded. Broadcasts delegate on if cannon can be loaded or not.
  */
 void ACannon::SetCanLoadCannon(bool const bSetCanLoad, AActor *CannonballToLoad)
@@ -88,43 +96,34 @@ void ACannon::LoadCannon(ACannonball* CannonballToLoad)
  */
 void ACannon::FireCannonball()
 {
-	if (!bReadyToFire)
-	{
-		return;
-	}
-	
-	if (!IsValid(BossEnemy))
-	{
-		return;
-	}
-	
-	if (!IsValid(Cannonball))
-	{
-		return;
-	}
+	if (!bReadyToFire) { return; }
+	if (!IsValid(BossEnemy)) { return; }
+	if (!IsValid(Cannonball)) { return; }
 	
 	Cannonball->SetAsFired(SetFiringRotation());
-	SetLoadable(false);
+	SetUnloadable();
 }
 
-/* Sets whether the cannon is able to be loaded. Sets the visibility of the ready to fire widget and the collision of
- * the cannon components based on whether the cannon can be loaded or not.
- * @param bCanLoad- Whether the cannon should be able to be loaded or not
+/* Sets the cannon as able to be loaded. Sets ready to fire widget as visible and the collision of the cannon
+ * components as queryable.
  */
-void ACannon::SetLoadable(bool const bCanLoad)
+void ACannon::SetLoadable()
 {
-	bCanBeLoaded = bCanLoad;
-	ReadyToFireWidget->SetVisibility(bCanLoad);
-	
-	if (bCanLoad)
-	{
-		CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	}
-	else
-	{
-		CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+	bCanBeLoaded = true;
+	ReadyToFireWidget->SetVisibility(true);
+	CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+/* Sets the cannon as unable to be loaded. Sets ready to fire widget as invisible and the collision of the cannon
+ * components as no collision.
+ */
+void ACannon::SetUnloadable()
+{
+	bCanBeLoaded = false;
+	ReadyToFireWidget->SetVisibility(false);
+	CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // Rotate the cannon to fire at where the boss will be
