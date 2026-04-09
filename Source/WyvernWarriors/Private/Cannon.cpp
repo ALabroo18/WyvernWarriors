@@ -114,6 +114,14 @@ void ACannon::SetLoadable()
 	ReadyToFireWidget->SetVisibility(true);
 	CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	
+	GetWorldTimerManager().SetTimer(
+		FireWidgetUITimer,
+		this,
+		&ACannon::UpdateFireWidget,
+		0.1f,
+		true
+	);
 }
 
 /* Sets the cannon as unable to be loaded and unready to fire. Sets ready to fire widget as invisible and the collision
@@ -126,6 +134,13 @@ void ACannon::SetUnloadable()
 	ReadyToFireWidget->SetVisibility(false);
 	CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+/* Change opacity of ready to fire widget based on the progress of the boss's destroy village timer.
+ */
+void ACannon::UpdateFireWidget() const
+{
+	ReadyToFireWidget->SetTintColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, BossEnemy->GetDestroyVillageTimerProgress()));
 }
 
 /* Gets rotation towards boss then rotates full cannon yaw towards boss and cannon barrel roll towards boss.

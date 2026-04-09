@@ -44,6 +44,10 @@ public:
 	UFUNCTION(Category = "Behavior")
 	void ClearDestroyVillageTimer();
 	
+	// Clears the timer for the village destruction.
+	UFUNCTION(Category = "Behavior")
+	float GetDestroyVillageTimerProgress() const;
+	
 	// Deals damage to force field and deactivates at 0 health
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
 	void DestroyForceField();

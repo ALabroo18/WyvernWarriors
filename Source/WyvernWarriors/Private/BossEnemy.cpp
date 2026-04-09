@@ -216,6 +216,13 @@ void ABossEnemy::ClearDestroyVillageTimer()
 	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
 }
 
+/*
+ */
+float ABossEnemy::GetDestroyVillageTimerProgress() const
+{
+	return GetWorldTimerManager().GetTimerRemaining(DestroyVillageHandle) / TimeToDestroyVillage;
+}
+
 /* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
  * village if no grunts left in array.
  * @param DeadGrunt - reference to grunt that was destroyed.

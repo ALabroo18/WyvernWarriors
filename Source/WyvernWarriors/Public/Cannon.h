@@ -61,10 +61,6 @@ private:
 	UFUNCTION(BlueprintCallable, Category = "Loading")
 	void LoadCannon(ACannonball* CannonballToLoad);
 	
-	// Rotate the cannon to fire at where the boss will be
-	UFUNCTION(BlueprintCallable, Category = "Firing")
-	FRotator SetFiringRotation();
-	
 	// Mesh for the cannon object
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
 	UStaticMeshComponent* CannonTopMesh;
@@ -85,13 +81,25 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
 	UWidgetComponent* ReadyToFireWidget;
 	
-	// Is the cannon ready to fire
+	// Change opacity of ready to fire widget.
+	UFUNCTION(Category = "Firing")
+	void UpdateFireWidget() const;
+	
+	// Handle for timer that updates fire widget opacity.
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
+	FTimerHandle FireWidgetUITimer;
+	
+	// Bool for if the cannon ready to fire.
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
 	bool bCanBeLoaded = false;
 	
 	// Is the cannon loaded with a cannonball
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
 	bool bReadyToFire = false;
+	
+	// Rotate the cannon to fire at where the boss will be
+	UFUNCTION(BlueprintCallable, Category = "Firing")
+	FRotator SetFiringRotation();
 	
 	// Cannonball that is fired
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
