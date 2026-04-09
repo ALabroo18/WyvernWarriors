@@ -53,8 +53,8 @@ void ABossEnemy::BeginPlay()
 			WeaponDropOffs.Add(Cast<AWeaponDropOff>(Actor));
 		}
 	}
-	StartApproachVillage();
-	// SummonGruntEnemies();
+
+	SummonGruntEnemies();
 	// Move rest of boss begin play here
 }
 
