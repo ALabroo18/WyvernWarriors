@@ -5,6 +5,7 @@
 #include "ActivatableInterface.h"
 #include "Cannonball.generated.h"
 
+class UWidgetComponent;
 class UEventBusComponent;
 class UStaticMeshComponent;
 class UProjectileMovementComponent;
@@ -40,6 +41,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void SetPickUpSphereCollision(bool const bIsEnabled);
 	
+	// Activates pickup widget and sets overlay highlight material.
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void ActivatePickUpUI() const;
+	
+	// Deactivates pickup widget and clears overlay highlight material.
+	UFUNCTION(BlueprintCallable, Category = "Cannonball")
+	void DeactivatePickUpUI() const;
+	
 private:	
 	// Sets default values for this actor's properties
 	ACannonball();
@@ -48,16 +57,20 @@ private:
 	virtual void BeginPlay() override;
 	
 	// Component for mesh of the actor
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Componenets", meta = (AllowPrivateAccess="true"))
 	UStaticMeshComponent* StaticMesh;
 	
 	// Component for the movement of the actor
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Componenets", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Componenets", meta = (AllowPrivateAccess="true"))
 	UProjectileMovementComponent* ProjectileMovement;
 
 	// Root component that handles collision
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
 	USphereComponent* SphereComponent;
+	
+	// Widget that displays cannonball pickup UI
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
+	UWidgetComponent* PickupWidget;
 
 	// Event bus for wyvern pickup delegate
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Delegate", meta = (AllowPrivateAccess = true));

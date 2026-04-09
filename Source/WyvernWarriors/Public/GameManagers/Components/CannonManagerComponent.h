@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "CannonManagerComponent.generated.h"
 
+class ACannonball;
 enum class EBossState : uint8;
 class ABossEnemy;
 class ACannon;
@@ -29,35 +30,55 @@ public:
 	void SetupCannonManager();
 	
 	// Sets boss reference for cannons.
-	UFUNCTION(BlueprintCallable, Category = "Wave Event")
+	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void SetCannonsBoss(ABossEnemy* BossEnemy);
-	
-	// Sets cannon as fireable or not depending on boss state
-	UFUNCTION(BlueprintCallable, Category = "Cannons")
-	void ChangeCannonFireable(EBossState NewBossState);
 
 private:
-	// Set a random cannon as able to fire
+	// Sets cannon as fireable or not depending on boss state
+	UFUNCTION(BlueprintCallable, Category = "Boss")
+	void EnableCannonsAndCannonballs(EBossState NewBossState);
+	
+	// Disables cannonball usage when force fields is deactivated.
+	UFUNCTION(Category = "Boss")
+	void OnForceFieldChange(bool bIsForceFieldActive);
+	
+	// Disables active cannon and cannonball usage when boss destroys village.
+	UFUNCTION(Category = "Boss")
+	void OnVillageDestroyed(FName DestroyedVillage);
+	
+	// Set a random cannon as able to fire.
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
 	void SetCannonLoadable();
 	
-	// Set a random cannon as unable to fire
+	// Set a random cannon as unable to fire.
 	UFUNCTION(BlueprintCallable, Category = "Cannons")
 	void SetCannonUnloadable() const;
+	
+	// Sets all cannonballs pickup sphere collision as enabled.
+	UFUNCTION(Category = "Cannonballs")
+	void SetCannonballsGrabbable();
+	
+	// Sets all cannonballs pickup sphere collision as disabled.
+	UFUNCTION(Category = "Cannonballs")
+	void SetCannonballsUngrabbable();
 	
 	// Gets the cannon closest to the boss.
 	UFUNCTION(Category = "Cannons")
 	ACannon* GetCannonClosestToBoss();
 
-	// Array of activatable cannon objects
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
-	TArray<AActor*> CannonActivatables;
+	// Array of cannonballs and cannonball stacks.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Cannonballs", meta = (AllowPrivateAccess = true))
+	TArray<AActor*> CannonballsAndStacks;
 	
-	// Reference to inactive cannons
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
+	// Array of cannonballs.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Cannonballs", meta = (AllowPrivateAccess = true))
+	TArray<ACannonball*> Cannonballs;
+	
+	// Reference to inactive cannons.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
 	TArray<ACannon*> Cannons;
 	
-	// Reference to active cannon
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
+	// Reference to active cannon.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Cannons", meta = (AllowPrivateAccess = true))
 	ACannon* ActiveCannon;
 };

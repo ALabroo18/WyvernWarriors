@@ -13,7 +13,7 @@
 void UCannonManagerComponent::SetCannonActivatables(bool const bBecomeActive)
 {
 	// Go through all cannonballs
-	for (AActor* Activatable : CannonActivatables)
+	for (AActor* Activatable : CannonballsAndStacks)
 	{
 		if (IsValid(Activatable))
 		{
@@ -23,26 +23,44 @@ void UCannonManagerComponent::SetCannonActivatables(bool const bBecomeActive)
 	}
 }
 
-/* Sets cannon as loadable when boss is hovering and sets unloadable when boss is returning to patrol route.
+/* Sets cannon loadable and cannonballs grabbable when boss enters hover state.
  * @param NewBossState - The state that the boss is currently in.
  */
-void UCannonManagerComponent::ChangeCannonFireable(EBossState const NewBossState)
+void UCannonManagerComponent::EnableCannonsAndCannonballs(EBossState const NewBossState)
 {
 	switch (NewBossState)
 	{
 	case EBossState::Hovering:
 		SetCannonLoadable();
-		break;
-	case EBossState::ReturningToPatrolRoute:
-		SetCannonUnloadable();
+		SetCannonballsGrabbable();
 		break;
 	default:
 		break;
 	}
 }
 
-/* Sets cannonballs and stacks as active and sets some cannons as able to fire at the boss on the final wave. Also sets
- * the boss for the cannons to target. Sets up change cannons fireable to listen to boss force field change delegate.
+/* Sets cannonballs ungrabbable when force field is inactive.
+ * @param bIsForceFieldActive - Whether the boss's force field is active or not.
+ */
+void UCannonManagerComponent::OnForceFieldChange(bool const bIsForceFieldActive)
+{
+	if (!bIsForceFieldActive)
+	{
+		SetCannonballsUngrabbable();
+	}
+}
+
+/* Disables actives cannon and sets cannonballs ungrabbable when force field is inactive.
+ * @param DestroyedVillage - Unused tag of the destroyed village.
+ */
+void UCannonManagerComponent::OnVillageDestroyed(FName DestroyedVillage)
+{
+	SetCannonballsUngrabbable();
+	SetCannonUnloadable();
+}
+
+/* Sets cannonballs and stacks as active. Sets the boss for the cannons to target. Sets up change cannons fireable to
+ * listen to boss state change delegate.
  * @param bIsFinalWave - bool for if the new wave is the final wave.
  */
 void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
@@ -50,7 +68,9 @@ void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 	if (bIsFinalWave)
 	{
 		UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetOwner())->GetEventBusComponent();
-		EventBus->OnBossStateChange.AddDynamic(this, &UCannonManagerComponent::ChangeCannonFireable);
+		EventBus->OnBossStateChange.AddDynamic(this, &UCannonManagerComponent::EnableCannonsAndCannonballs);
+		EventBus->OnForceFieldChange.AddDynamic(this, &UCannonManagerComponent::OnForceFieldChange);
+		EventBus->OnVillageDestroyed.AddDynamic(this, &UCannonManagerComponent::OnVillageDestroyed);
 		
 		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent();
 		ABossEnemy* BossEnemy = EnemyManager->GetBossEnemy();
@@ -71,7 +91,7 @@ void UCannonManagerComponent::SetupCannonManager()
 	{
 		if (IsValid(TempActor))
 		{
-			CannonActivatables.Add(Cast<ACannonballStack>(TempActor));
+			CannonballsAndStacks.Add(Cast<ACannonballStack>(TempActor));
 		}
 	}
 	
@@ -83,7 +103,9 @@ void UCannonManagerComponent::SetupCannonManager()
 	{
 		if (IsValid(TempActor))
 		{
-			CannonActivatables.Add(Cast<ACannonball>(TempActor));
+			ACannonball* TempCannonball = Cast<ACannonball>(TempActor);
+			CannonballsAndStacks.Add(TempCannonball);
+			Cannonballs.Add(TempCannonball);
 		}
 	}
 	
@@ -128,6 +150,28 @@ void UCannonManagerComponent::SetCannonLoadable()
 void UCannonManagerComponent::SetCannonUnloadable() const
 {
 	ActiveCannon->SetUnloadable();
+}
+
+/* Sets all cannonballs pickup sphere collision as enabled.
+ */
+void UCannonManagerComponent::SetCannonballsGrabbable()
+{
+	for (ACannonball* Cannonball : Cannonballs)
+	{
+		Cannonball->SetPickUpSphereCollision(true);
+		Cannonball->ActivatePickUpUI();
+	}
+}
+
+/* Sets all cannonballs pickup sphere collision as disabled.
+ */
+void UCannonManagerComponent::SetCannonballsUngrabbable()
+{
+	for (ACannonball* Cannonball : Cannonballs)
+	{
+		Cannonball->SetPickUpSphereCollision(false);
+		Cannonball->DeactivatePickUpUI();
+	}
 }
 
 /* Loops through cannons and gets their distance to the boss. Sets the cannon and distance when distance is lowest.

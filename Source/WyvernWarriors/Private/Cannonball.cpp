@@ -2,6 +2,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "GameManagers/GameModeLevel.h"
 
 /* Disables tick and sets up components on actor. Sets projectile to not automatically move.
@@ -12,12 +13,17 @@ ACannonball::ACannonball()
 	
 	SphereComponent = CreateDefaultSubobject<USphereComponent>("SphereComponent");
 	SetRootComponent(SphereComponent);
+	SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>("StaticMesh");
 	StaticMesh->SetupAttachment(RootComponent);
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>("ProjectileMovement");
 	ProjectileMovement->bAutoActivate = false;
+	
+	PickupWidget = CreateDefaultSubobject<UWidgetComponent>("PickupWidget");
+	PickupWidget->SetupAttachment(RootComponent);
+	PickupWidget->SetVisibility(false);
 }
 
 /* Stores initial actor location and gets event bus to use when the cannonball is picked up by the player. Adds 
@@ -46,6 +52,22 @@ void ACannonball::SetPickUpSphereCollision(bool const bIsEnabled)
 	}
 }
 
+/* Activates pickup widget and sets overlay highlight material.
+ */
+void ACannonball::ActivatePickUpUI() const
+{
+	PickupWidget->SetVisibility(true);
+	StaticMesh->SetOverlayMaterial(HighlightMaterial);
+}
+
+/* Deactivates pickup widget and clears overlay highlight material.
+ */
+void ACannonball::DeactivatePickUpUI() const
+{
+	PickupWidget->SetVisibility(false);
+	StaticMesh->SetOverlayMaterial(nullptr);
+}
+
 /* Returns the speed at which the cannonball was fired
  * @return float - The speed at which the cannonball was fired
  */
@@ -62,7 +84,6 @@ void ACannonball::SetActiveness(bool const bIsActive)
 	SetActorHiddenInGame(!bIsActive);
 	SetActorEnableCollision(bIsActive);
 	
-	
 	if (!bIsActive)
 	{
 		if (ProjectileMovement->IsActive())
@@ -70,28 +91,15 @@ void ACannonball::SetActiveness(bool const bIsActive)
 			ProjectileMovement->StopMovementImmediately();
 		}
 	}
-	else
-	{
-		if (IsValid(StaticMesh))
-		{
-			StaticMesh->SetOverlayMaterial(HighlightMaterial);
-		}
-	}
 }
 
-/* Detaches cannonball from any owning actor and turn pickup sphere collisions on. Then reset the cannonball to its
- * initial location, and stops its movement
+/* Detaches cannonball from any owning actor then reset the cannonball to its initial location and stop its movement.
  */
 void ACannonball::ResetCannonball()
 {
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
-	SetPickUpSphereCollision(true);
 	ProjectileMovement->StopMovementImmediately(); 
 	SetActorLocation(InitialLocation);
-	if (IsValid(StaticMesh))
-	{
-		StaticMesh->SetOverlayMaterial(HighlightMaterial);
-	}
 }
 
 /* Attaches cannonball to the specified socket on the Wyvern mesh and disables pickup sphere collision
@@ -102,10 +110,7 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 {
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
-	if (IsValid(StaticMesh))
-	{
-		StaticMesh->SetOverlayMaterial(nullptr);
-	}
+	StaticMesh->SetOverlayMaterial(nullptr);
 }
 
 /* Sets the cannonball as fired by rotating itself, activating its movement, and setting it as active

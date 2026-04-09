@@ -69,8 +69,24 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	EBossState CurrentState = EBossState::OnPatrolRoute;
 	
-	// Change to approach village state
+	// Switches boss to hovering state.
 	UFUNCTION(Category = "Behavior")
+	void SwitchToHoveringState();
+	
+	// Destroys the targeted village
+	UFUNCTION(Category = "Behavior")
+	void DestroyVillage();
+	
+	// Handle for destroy village timer.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	FTimerHandle DestroyVillageHandle;
+	
+	// Time for destroy village timer,
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	float TimeToDestroyVillage = 20.f;
+	
+	// Change to approach village state
+	UFUNCTION(Category = "Movement")
 	void StartApproachVillage();
 	
 	// Moves towards a village to hover over
@@ -92,9 +108,21 @@ private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
 	TArray<AWeaponDropOff*> WeaponDropOffs;
 	
-	// Location above village for boss to travel to
+	// Weapon drop off of village being targeted
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
-	FVector LocationAboveVillage;
+	AWeaponDropOff* WeaponDropOff;
+	
+	// Location above village for boss to hover at
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	FVector VillageHoverLocation;
+	
+	// Offset from village location for boss to hover at
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	FVector BossLocationOffset = FVector(.0f, 5000.f, 10000.f);
+	
+	// Rotation for boss to face village
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	FRotator RotationTowardsVillage = FRotator::ZeroRotator;
 	
 	// Mesh used for force field visual
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))

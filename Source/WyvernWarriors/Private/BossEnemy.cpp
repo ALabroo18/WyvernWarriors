@@ -53,7 +53,7 @@ void ABossEnemy::BeginPlay()
 			WeaponDropOffs.Add(Cast<AWeaponDropOff>(Actor));
 		}
 	}
-	
+	StartApproachVillage();
 	// SummonGruntEnemies();
 	// Move rest of boss begin play here
 }
@@ -70,7 +70,6 @@ void ABossEnemy::Tick(float const DeltaTime)
 	{
 	case EBossState::OnPatrolRoute:
 		MoveAlongSpline(DeltaTime);
-		StartApproachVillage();
 		break;
 	case EBossState::ApproachVillage:
 		ApproachVillage(DeltaTime);
@@ -84,11 +83,13 @@ void ABossEnemy::Tick(float const DeltaTime)
 	}
 }
 
-/* Spawn force field break niagara system then set force field inactive in collision and visibility. Broadcast force
- * field change.
+/* Stop lightning strikes first. Spawn force field break niagara system then set force field inactive in collision
+ * and visibility. Broadcast force field change.
  */
 void ABossEnemy::DestroyForceField()
 {
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+	
 	UNiagaraFunctionLibrary::SpawnSystemAttached(
 		ForceFieldBreak,
 		ForceField,
@@ -104,6 +105,7 @@ void ABossEnemy::DestroyForceField()
 	ForceField->SetVisibility(false);
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
 	EventBus->OnForceFieldChange.Broadcast(false); 
+	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldRestoreHandle,
 		this,
@@ -127,11 +129,13 @@ void ABossEnemy::RestoreForceField()
 			EAttachLocation::SnapToTargetIncludingScale,
 			true
 		);
+	
 	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	ForceField->SetVisibility(true);
 	bIsForceFieldActive = true;
-	
 	EventBus->OnForceFieldChange.Broadcast(true);
+	
+	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
@@ -165,6 +169,46 @@ void ABossEnemy::DestroySelfEnemy()
 	Destroy(); // Destroy self
 }
 
+/* Changes state to hovering and gets rotation to look at village with 0 pitch. Starts timer to destory village.
+ */
+void ABossEnemy::SwitchToHoveringState()
+{
+	UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
+	RotationTowardsVillage = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), VillageHoverLocation - BossLocationOffset);
+	RotationTowardsVillage = FRotator(0.f, RotationTowardsVillage.Yaw, RotationTowardsVillage.Roll);
+	
+	CurrentState = EBossState::Hovering;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+	
+	GetWorldTimerManager().SetTimer(
+		DestroyVillageHandle,
+		this,
+		&ABossEnemy::DestroyVillage,
+		TimeToDestroyVillage,
+		false);
+}
+
+/* Gets tag of targeted village weapon drop-off and broadcasts destroyed village with that tag. Removes weapon drop-off
+ * from array. If no weapon drop-offs left, call lose level in game mode.
+ */
+void ABossEnemy::DestroyVillage()
+{
+	FName const DestroyedTag = WeaponDropOff->Tags.Last();
+	EventBus->OnVillageDestroyed.Broadcast(DestroyedTag);
+	UE_LOG(LogTemp, Log, TEXT("Boss has destroyed village with tag: %s"), *DestroyedTag.ToString());
+	WeaponDropOffs.Remove(WeaponDropOff);
+	if (WeaponDropOffs.IsEmpty())
+	{
+		AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode());
+		GameModeLevel->LoseLevel();
+		return;
+	}
+	
+	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+}
+
 /* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
  * village if no grunts left in array.
  * @param DeadGrunt - reference to grunt that was destroyed.
@@ -193,19 +237,17 @@ void ABossEnemy::StartApproachVillage()
 	AttackPlayer();
 }
 
-/* Gets direction towards a location above a village then move and rotate towards it. Changes state to hovering and
- * exits early if close enough.
+/* Gets direction towards a location above a village then move and rotate towards it. Switch to hovering state if close
+ * enough.
  * @param DeltaTime - time since last tick.
  */
 void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
-	FVector DirectionToVillage = LocationAboveVillage - GetActorLocation();
+	FVector DirectionToVillage = VillageHoverLocation - GetActorLocation();
 
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), LocationAboveVillage) < FMath::Square(500.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(500.f))
 	{
-		UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
-		CurrentState = EBossState::Hovering;
-		EventBus->OnBossStateChange.Broadcast(CurrentState);
+		SwitchToHoveringState();
 		return;
 	}
 	
@@ -213,15 +255,13 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 	RotateAndMove(DirectionToVillage, DeltaTime);
 }
 
-/* Rotates the boss so that it is facing straight forward. Disables tick after rotating.
+/* Rotates the boss so that it is facing the village. Disables tick after rotating.
  * @param DeltaTime - time since last tick.
  */
 void ABossEnemy::RotateThenHover(float const DeltaTime)
 {
-	float const YawValue = GetActorRotation().Yaw;
-	float const RollValue = GetActorRotation().Roll;
-	SetActorRotation(FMath::RInterpTo(GetActorRotation(), FRotator(0.f, YawValue, RollValue), DeltaTime, .5f));
-	if (GetActorRotation().Equals(FRotator(0.f, YawValue, RollValue), .5f))
+	SetActorRotation(FMath::RInterpTo(GetActorRotation(), RotationTowardsVillage, DeltaTime, .5f));
+	if (GetActorRotation().Equals(RotationTowardsVillage, .5f))
 	{
 		UE_LOG(LogTemp, Log, TEXT("Done Rotating, now hovering"));
 		SetActorTickEnabled(false);
@@ -234,15 +274,16 @@ void ABossEnemy::RotateThenHover(float const DeltaTime)
 void ABossEnemy::ReturnToRoute(float const DeltaTime)
 {
 	Super::ReturnToRoute(DeltaTime);
-	
+
 	if (bOnRoute)
 	{
+		UE_LOG(LogTemp, Log, TEXT("Boss returned to route, switching to on patrol route state."));
 		CurrentState = EBossState::OnPatrolRoute;
 		SummonGruntEnemies();
 	}
 }
 
-/* Sets the location above the village to approach. Determines if location is feasible through line check before
+/* Sets the location above the village to hover at. Determines if location is feasible through line check before
  * setting.
  */
 void ABossEnemy::GetVillageLocation()
@@ -254,27 +295,26 @@ void ABossEnemy::GetVillageLocation()
 	CollisionParams.AddIgnoredActor(PlayerCharacter);
 	
 	TArray<AWeaponDropOff*> ValidWeaponDropOffs = WeaponDropOffs;
-	while (!ValidWeaponDropOffs.IsEmpty())
+	if (ValidWeaponDropOffs.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("There are no weapon drop-offs in the level for the boss to hover over.")); return; }
+	
+	while (true)
 	{
-		AWeaponDropOff* WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
+		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
 		ValidWeaponDropOffs.Remove(WeaponDropOff);
 		
-		LocationAboveVillage = WeaponDropOff->GetActorLocation() + FVector(0.f, 0.f, 15000.f);
+		VillageHoverLocation = WeaponDropOff->GetActorLocation() + BossLocationOffset;
 		GetWorld()->SweepSingleByChannel(
 			Hit,
 			GetActorLocation(),
-			LocationAboveVillage,
+			VillageHoverLocation,
 			FQuat::Identity,
 			ECollisionChannel::ECC_WorldStatic,
 			MySphere,
 			CollisionParams
 		);
 		
-		if (!Hit.bBlockingHit)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."))
-			break;
-		}
+		if (!Hit.bBlockingHit) { break; }
+		UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."));
 	}
 }
 
@@ -299,10 +339,10 @@ void ABossEnemy::SummonGruntEnemies()
 	for (int i = 0; i < GruntSummonAmount; i++)
 	{
 		float RouteDistance;
-		FTransform GruntSpawnTransform = EnemyManagerComponent->GetGruntSpawnTransform(nullptr, RouteDistance);
+		FTransform GruntSpawnTransform = EnemyManagerComponent->GetGruntSpawnTransform(PatrolRoute, RouteDistance);
 		AGruntEnemy* SummonedGrunt = EnemyManagerComponent->SpawnGruntEnemy(
 			GruntSpawnTransform,
-			0,
+			RouteDistance,
 			PatrolRoute,
 			false,
 			false
