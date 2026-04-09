@@ -100,6 +100,7 @@ void ACannon::FireCannonball()
 	if (!IsValid(BossEnemy)) { return; }
 	if (!IsValid(Cannonball)) { return; }
 	
+	BossEnemy->ClearDestroyVillageTimer();
 	Cannonball->SetAsFired(SetFiringRotation());
 	SetUnloadable();
 }
@@ -121,7 +122,7 @@ void ACannon::SetLoadable()
 void ACannon::SetUnloadable()
 {
 	bCanBeLoaded = false;
-    bReadyToFire = false;
+	bReadyToFire = false;;
 	ReadyToFireWidget->SetVisibility(false);
 	CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);

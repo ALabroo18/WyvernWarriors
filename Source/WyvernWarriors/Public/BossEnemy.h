@@ -40,6 +40,10 @@ public:
 	// Executes the lightning strikes at the specified locations
 	void ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations);
 	
+	// Clears the timer for the village destruction.
+	UFUNCTION(Category = "Behavior")
+	void ClearDestroyVillageTimer();
+	
 	// Deals damage to force field and deactivates at 0 health
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
 	void DestroyForceField();

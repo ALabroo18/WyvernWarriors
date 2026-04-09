@@ -88,7 +88,7 @@ void ABossEnemy::Tick(float const DeltaTime)
  */
 void ABossEnemy::DestroyForceField()
 {
-	GetWorldTimerManager().ClearAllTimersForObject(this);
+	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	
 	UNiagaraFunctionLibrary::SpawnSystemAttached(
 		ForceFieldBreak,
@@ -207,6 +207,13 @@ void ABossEnemy::DestroyVillage()
 	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
+}
+
+/* Clears the timer for the village destruction.
+ */
+void ABossEnemy::ClearDestroyVillageTimer()
+{
+	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
 }
 
 /* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
