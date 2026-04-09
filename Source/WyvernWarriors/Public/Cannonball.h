@@ -76,6 +76,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Delegate", meta = (AllowPrivateAccess = true));
 	UEventBusComponent* EventBus;
 	
+	// Resets cannonball when village is destroyed.
+	UFUNCTION(Category = "Cannonball")
+	void OnVillageDestroyed(FName DestroyedVillage);
+	
 	// Initial location of the cannonball for resetting after use
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cannonball", meta = (AllowPrivateAccess = true))
 	FVector InitialLocation;

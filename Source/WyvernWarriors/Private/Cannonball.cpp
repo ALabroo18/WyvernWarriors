@@ -4,6 +4,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "GameManagers/GameModeLevel.h"
+#include "GameManagers/Components/EventBusComponent.h"
 
 /* Disables tick and sets up components on actor. Sets projectile to not automatically move.
  */
@@ -35,6 +36,16 @@ void ACannonball::BeginPlay()
 	InitialLocation = GetActorLocation();
 	
 	EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
+	EventBus->OnVillageDestroyed.AddDynamic(this, &ACannonball::OnVillageDestroyed);
+}
+
+/* Resets cannonball fire status and cannonball itself.
+ * @FName DestroyedVillage - Unused tag for destroyed village.
+ */
+void ACannonball::OnVillageDestroyed(FName DestroyedVillage)
+{
+	bHasBeenFired = false;
+	ResetCannonball();
 }
 
 /* Sets collisions of input sphere to none or query online
@@ -94,6 +105,7 @@ void ACannonball::SetActiveness(bool const bIsActive)
 }
 
 /* Detaches cannonball from any owning actor then reset the cannonball to its initial location and stop its movement.
+ * Set cannonball as not being fired.
  */
 void ACannonball::ResetCannonball()
 {
@@ -111,6 +123,7 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
 	StaticMesh->SetOverlayMaterial(nullptr);
+	PickupWidget->SetVisibility(false);
 }
 
 /* Sets the cannonball as fired by rotating itself, activating its movement, and setting it as active

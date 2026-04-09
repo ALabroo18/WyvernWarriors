@@ -115,12 +115,13 @@ void ACannon::SetLoadable()
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
-/* Sets the cannon as unable to be loaded. Sets ready to fire widget as invisible and the collision of the cannon
- * components as no collision.
+/* Sets the cannon as unable to be loaded and unready to fire. Sets ready to fire widget as invisible and the collision
+ * of the cannon components as no collision.
  */
 void ACannon::SetUnloadable()
 {
 	bCanBeLoaded = false;
+    bReadyToFire = false;
 	ReadyToFireWidget->SetVisibility(false);
 	CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
