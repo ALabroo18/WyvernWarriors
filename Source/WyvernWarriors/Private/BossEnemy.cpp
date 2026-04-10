@@ -220,7 +220,7 @@ void ABossEnemy::ClearDestroyVillageTimer()
  */
 float ABossEnemy::GetDestroyVillageTimerProgress() const
 {
-	return GetWorldTimerManager().GetTimerRemaining(DestroyVillageHandle) / TimeToDestroyVillage;
+	return GetWorldTimerManager().GetTimerElapsed(DestroyVillageHandle) / TimeToDestroyVillage;
 }
 
 /* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach

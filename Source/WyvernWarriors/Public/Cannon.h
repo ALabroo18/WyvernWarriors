@@ -41,6 +41,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
 	float GetDistanceToBossSquared();
 	
+	// Change opacity of ready to fire widget.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Firing")
+	void UpdateFireWidget() const;
+	
 private:
 	// Sets default values for this actor's properties and binds delegates
 	ACannon();
@@ -80,10 +84,6 @@ private:
 	// Widget that shows a cannon ready to fire
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
 	UWidgetComponent* ReadyToFireWidget;
-	
-	// Change opacity of ready to fire widget.
-	UFUNCTION(Category = "Firing")
-	void UpdateFireWidget() const;
 	
 	// Handle for timer that updates fire widget opacity.
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
