@@ -68,6 +68,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
 	void RestoreForceField();
 
+protected:
+	//
+	UFUNCTION(BlueprintImplementableEvent, Category = "Behavior")
+	void PlayFinalBlowQTE();
+	
 private:
 	// Sets up boss components
 	ABossEnemy();
@@ -95,6 +100,10 @@ private:
 	// Time for destroy village timer,
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	float TimeToDestroyVillage = 30.f;
+	
+	// QTE for final boss strike.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	TSubclassOf<UUserWidget> FinalBlowQTE;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")
