@@ -40,12 +40,24 @@ public:
 	// Executes the lightning strikes at the specified locations
 	void ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations);
 	
+	// Sets up variables
+	virtual void BeginPlay() override;
+	
+	// Ticks the boss behavior based on current state
+	virtual void Tick( float DeltaTime ) override;
+	
+	// Destroys self and completes the wave
+	virtual void DestroySelfEnemy() override;
+	
+	// Moves back to patrol route
+	virtual void ReturnToRoute(float const DeltaTime) override;
+	
 	// Clears the timer for the village destruction.
 	UFUNCTION(Category = "Behavior")
 	void ClearDestroyVillageTimer();
 	
 	// Clears the timer for the village destruction.
-	UFUNCTION(Category = "Behavior")
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
 	float GetDestroyVillageTimerProgress() const;
 	
 	// Deals damage to force field and deactivates at 0 health
@@ -59,15 +71,6 @@ public:
 private:
 	// Sets up boss components
 	ABossEnemy();
-	
-	// Sets up variables
-	virtual void BeginPlay() override;
-	
-	// Ticks the boss behavior based on current state
-	virtual void Tick( float DeltaTime ) override;
-	
-	// Destroys self and completes the wave
-	virtual void DestroySelfEnemy() override;
 	
 	// Reference to the event bus
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Game Managers", meta = (AllowPrivateAccess = true))
@@ -91,7 +94,7 @@ private:
 	
 	// Time for destroy village timer,
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	float TimeToDestroyVillage = 20.f;
+	float TimeToDestroyVillage = 30.f;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")
@@ -104,9 +107,6 @@ private:
 	// Rotates the boss then hovers
 	UFUNCTION(Category = "Movement")
 	void RotateThenHover(float const DeltaTime);
-	
-	// Moves back to patrol route
-	virtual void ReturnToRoute(float const DeltaTime) override;
 	
 	// Gets a valid location above a village
 	UFUNCTION(Category = "Movement")

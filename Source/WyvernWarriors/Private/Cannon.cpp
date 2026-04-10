@@ -136,13 +136,6 @@ void ACannon::SetUnloadable()
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-/* Change opacity of ready to fire widget based on the progress of the boss's destroy village timer.
- */
-void ACannon::UpdateFireWidget() const
-{
-	ReadyToFireWidget->SetTintColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, BossEnemy->GetDestroyVillageTimerProgress()));
-}
-
 /* Gets rotation towards boss then rotates full cannon yaw towards boss and cannon barrel roll towards boss.
  * @return FRotator - The rotation from the cannon location to face the boss.
  */

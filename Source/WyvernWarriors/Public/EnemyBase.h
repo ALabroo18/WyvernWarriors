@@ -20,6 +20,9 @@ public:
 	// Sets default values for this pawn's properties
 	AEnemyBase();
 	
+	// Sets up values
+	virtual void BeginPlay() override;
+	
 	// Returns the distance along the patrol route
 	float GetDistanceAlongRoute() const { return DistanceAlongSpline; };
 	
@@ -56,9 +59,6 @@ public:
 	virtual void DestroySelfEnemy() {};
 
 protected:
-	// Sets up values
-	virtual void BeginPlay() override;
-	
 	// Rotates and moves the enemy with the specified rotation, away from actors if provided
 	UFUNCTION(Category = "Movement")	
 	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
