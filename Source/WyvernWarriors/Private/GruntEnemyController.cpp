@@ -45,3 +45,10 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 	
 	RunBehaviorTree(GruntBehaviorTree); // Start the behavior tree for AI logic
 }
+
+/* Run the aggressive behavior subtree only
+ */
+void AGruntEnemyController::RunAggressiveTree()
+{
+	RunBehaviorTree(GruntAggressiveTree);
+}

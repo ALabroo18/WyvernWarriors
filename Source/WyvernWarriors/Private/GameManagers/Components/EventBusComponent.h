@@ -14,6 +14,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnWaveComplete, bool, bIsFinalWave)
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCannonCanBeLoaded, bool, bCanBeLoaded, ACannon*, CannonToBeLoaded); // Delegate for wave completion event
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCutsceneEvent, bool, bIsHappening); // Delegate for when cutscene happens
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGruntDeath, AGruntEnemy*, DeadGrunt); // Delegate for when grunt enemy dies
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBossStateChange, EBossState, BossState); // Delegate for boss state changes
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, bool, bIsForceFieldActive); // Delegate for force field state change
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVillageDestroyed, FName, VillageDestroyedTag); // Delegate for when boss destroys village.
+
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent
@@ -21,30 +25,42 @@ class UEventBusComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Delegate for wyvern being able to pick up cannonball
+	// Delegate for wyvern being able to pick up cannonball.
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannonball")
 	FWyvernCanPickUpCannonball WyvernCanPickUpCannonball;
 
-	// Delegate for when a new wave happens
+	// Delegate for when a new wave happens.
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Wave")
 	FOnNewWave OnNewWave;
 
-	// Delegate for when a wave is completed
+	// Delegate for when a wave is completed.
 	UPROPERTY(BlueprintAssignable, Category = "Wave")
 	FOnWaveComplete OnWaveComplete;
 	
-	// Delegate for when a cannon can be loaded or not
+	// Delegate for when a cannon can be loaded or not.
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannon")
 	FCannonCanBeLoaded CannonCanBeLoaded;
 	
-	// Delegate for when cutscene happens
+	// Delegate for when cutscene happens.
 	UPROPERTY(BlueprintAssignable, Category = "Cinematics")
 	FCutsceneEvent CutsceneEvent;
 	
-	// Delegate for when grunt enemy dies
-	UPROPERTY(BlueprintAssignable, Category = "Enemy")
+	// Delegate for when grunt enemy dies.
+	UPROPERTY(BlueprintAssignable, Category = "Grunt")
 	FOnGruntDeath OnGruntDeath;
-
+	
+	// Delegate for the boss state change.
+	UPROPERTY(BlueprintAssignable, Category = "Boss")
+	FOnBossStateChange OnBossStateChange;
+	
+	// Delegate for force field state change.
+	UPROPERTY(BlueprintAssignable, Category = "Force Field")
+	FOnForceFieldChange OnForceFieldChange; 
+	
+	// Delegate for when boss destroys village.
+	UPROPERTY(BlueprintAssignable, Category = "Boss")
+	FOnVillageDestroyed OnVillageDestroyed;
+	
 private:	
 	// Sets default values for this component's properties
 	UEventBusComponent();

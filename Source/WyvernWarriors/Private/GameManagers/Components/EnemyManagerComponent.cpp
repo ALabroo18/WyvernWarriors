@@ -299,17 +299,11 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 void UEnemyManagerComponent::SpawnBoss()
 {
 	// Do not spawn if no spawn points available
-	if (!IsValid(BossPatrolRoute))
-	{
-		return;
-	}
+	if (!IsValid(BossPatrolRoute)) { return; }
 
 	// Ensure the boss route has a valid spline component
 	const USplineComponent* BossSpline = BossPatrolRoute->GetComponentByClass<USplineComponent>();
-	if (!IsValid(BossSpline))
-	{
-		return;
-	}
+	if (!IsValid(BossSpline)) { return; }
 
 	float const DistanceAlongSpline = FMath::RandRange(0.f, BossSpline->GetSplineLength()); // Determine a random distance along the spline for boss spawning
 	FVector const SpawnLocation = BossSpline->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Determine a random distance along the spline for grunt initalization

@@ -48,7 +48,7 @@ void UWaveManagerComponent::NewWave()
 			{
 				if (!Outpost->GetPlayerCapturedStatus())
 				{
-					Outpost->NewWave(bIsFinalWave);
+					Outpost->NewWave(true);
 				}
 			}
 		}

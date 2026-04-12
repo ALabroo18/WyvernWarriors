@@ -3,7 +3,6 @@
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManagers/GameModeLevel.h"
@@ -167,38 +166,6 @@ void AGruntEnemy::DestroySelfEnemy()
 	ToggleGruntEnemy(false);
 }
 
-/* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.
- * Check if grunt is on patrol route.
- * @param DeltaTime - float that is time since last tick
- */
-void AGruntEnemy::ReturnToRoute(float const DeltaTime)
-{
-	if (!IsValid(SplineComponent))
-	{
-		return;
-	}
-
-	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
-	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
-	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);
-
-	CheckOnPatrolRoute();
-}
-
-/* Checks if grunt is on patrol route and sets relevant status
- */
-void AGruntEnemy::CheckOnPatrolRoute()
-{	
-	if (FVector::DistSquared(GetActorLocation(), SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World)) < 2000 * 2000)
-	{
-		bOnRoute = true;
-	}
-	else
-	{
-		bOnRoute = false;
-	}
-}
-
 /* Gets direction towards player than rotates and moves said direction.
  * @param DeltaTime - float that is time since last tick
  */
@@ -215,4 +182,17 @@ void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 {
 	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
 	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
+}
+
+/* Gets controller for this grunt and runs the aggressive behavior subtree on it.
+ */
+void AGruntEnemy::UseAggressiveTreeOnly() const
+{
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
+		return;
+	}
+	GruntEnemyController->RunAggressiveTree();
 }

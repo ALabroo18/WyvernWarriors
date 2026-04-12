@@ -47,14 +47,6 @@ public:
 	// Highlights or unhighlights the grunt enemy for visual feedback
 	UFUNCTION(BlueprintCallable, Category = "Appearance")
 	void HighlightGruntEnemy(bool bHighlight);
-
-	// Rotates and moves grunt back towards patrol route spot
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void ReturnToRoute(float DeltaTime);
-	
-	// Sets grunt on patrol route if close enough
-	UFUNCTION(BlueprintCallable, Category = "Movement")
-	void CheckOnPatrolRoute();
 	
 	// Gets on route bool
 	bool GetOnPatrolRoute() const { return bOnRoute; }
@@ -64,6 +56,10 @@ public:
 	
 	// Flee from the character until far enough
 	void FleePlayerCharacter(float const DeltaTime);
+	
+	// Make grunt only use aggressive behavior subtree
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	void UseAggressiveTreeOnly() const;
 
 private:
 	// Sets grunt variables on game start
@@ -93,10 +89,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = true))
 	UWidgetComponent* HealthBarWidget;
 	
-	// Whether the enemy is currently moving along the patrol route
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = true))
-	bool bOnRoute = false;
-	
 	// Whether the enemy has seen the player
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bSeenPlayer = false;
@@ -104,10 +96,6 @@ private:
 	// Whether the enemy is an egg thief
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bIsEggThief = false;
-	
-	// Array of enemies that are within detection sphere
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	TArray<AActor*> NearbyEnemies;
 	
 	// Projectile used for attacking player
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
