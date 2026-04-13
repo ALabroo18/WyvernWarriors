@@ -209,7 +209,8 @@ void ABossEnemy::ClearDestroyVillageTimer()
 	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
 }
 
-/*
+/* Gets percentage of destroy village timer that has elapsed.
+ * @return float - float percent of elapsed time of destroy village timer.
  */
 float ABossEnemy::GetDestroyVillageTimerProgress() const
 {
