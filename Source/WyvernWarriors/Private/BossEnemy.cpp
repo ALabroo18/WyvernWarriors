@@ -55,7 +55,6 @@ void ABossEnemy::BeginPlay()
 	}
 
 	SummonGruntEnemies();
-	// Move rest of boss begin play here
 }
 
 /* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
@@ -216,7 +215,8 @@ void ABossEnemy::ClearDestroyVillageTimer()
 	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
 }
 
-/*
+/* Gets percentage of destroy village timer that has elapsed.
+ * @return float - float percent of elapsed time of destroy village timer.
  */
 float ABossEnemy::GetDestroyVillageTimerProgress() const
 {

@@ -61,12 +61,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Behavior")
 	void UseAggressiveTreeOnly() const;
 
+protected:
+	// Increase the kill combo on enemy death.
+	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
+	void IncreaseKillCombo() const;
+	
 private:
 	// Sets grunt variables on game start
 	virtual void BeginPlay() override;
 	
 	// Event bus component used for delegates
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = true))
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess = true))
 	UEventBusComponent* EventBus;
 	
 	// Camera manager that is attached to player
