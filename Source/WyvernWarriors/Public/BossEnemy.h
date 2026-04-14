@@ -61,13 +61,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Behavior")
 	float GetDestroyVillageTimerProgress() const;
 	
-	// Deals damage to force field and deactivates at 0 health
-	UFUNCTION(BlueprintCallable, Category = "Force Field")
+	// Deactivated force field.
+	UFUNCTION(Category = "Force Field")
 	void DestroyForceField();
 	
-	// Reactivates force field and restores its health
+	// Plays niagara system for force field destruction.
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
+	void DestroyForceFieldNiagara();
+	
+	// Reactivates force field.
+	UFUNCTION(Category = "Force Field")
 	void RestoreForceField();
+	
+	// Plays niagara system for force field restoration.
+	UFUNCTION(Category = "Force Field")
+	void RestoreForceFieldNiagara();
 
 protected:
 	// Play final blow QTE
@@ -158,9 +166,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))
 	UStaticMeshComponent* ForceField;
 	
-	// Timer handle for restoring force field
+	// Timer handle for force field vfx and restoration.
 	UPROPERTY(BlueprintReadonly, Category = "Force Field", meta = (AllowPrivateAccess = true))
-	FTimerHandle ForceFieldRestoreHandle;
+	FTimerHandle ForceFieldHandle;
 	
 	// Is the boss using force field
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadWrite, Category = "Force Field", meta = (AllowPrivateAccess = true))

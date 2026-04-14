@@ -86,10 +86,30 @@ void ABossEnemy::Tick(float const DeltaTime)
 	}
 }
 
-/* Stop lightning strikes first. Spawn force field break niagara system then set force field inactive in collision
- * and visibility. Broadcast force field change.
+/* Spawn force field break niagara system then set force field inactive in collision and visibility. Broadcast force
+ * field change. Set timer to restore force field.
  */
 void ABossEnemy::DestroyForceField()
+{
+	bIsForceFieldActive = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ForceField->SetVisibility(false);
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
+	EventBus->OnForceFieldChange.Broadcast(false); 
+	
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceFieldNiagara,
+		TimeToRestoreForceField,
+		false
+	);
+}
+
+/* Stop lightning strikes and play the force field destroyed niagara effect. Set timer to finish destroying force
+ * field.
+ */
+void ABossEnemy::DestroyForceFieldNiagara()
 {
 	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	
@@ -103,25 +123,33 @@ void ABossEnemy::DestroyForceField()
 		true
 	);
 	
-	bIsForceFieldActive = false;
-	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ForceField->SetVisibility(false);
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
-	EventBus->OnForceFieldChange.Broadcast(false); 
-	
 	GetWorldTimerManager().SetTimer(
-		ForceFieldRestoreHandle,
+		ForceFieldHandle,
 		this,
-		&ABossEnemy::RestoreForceField,
-		TimeToRestoreForceField,
+		&ABossEnemy::DestroyForceField,
+		0.7f,
 		false
-	);
+		);
 }
 
-/* Plays force field restored niagara effect and sets force field active with collision and visibility. Broadcast
- * force field change.
+/* Sets force field active with collision and visibility. Broadcast force field change. Enable actor tick and change
+ * state to return to patrol route.
  */
 void ABossEnemy::RestoreForceField()
+{
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
+	bIsForceFieldActive = true;
+	EventBus->OnForceFieldChange.Broadcast(true);
+	
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
+}
+
+/* Plays force field restored niagara effect. Set timer to finish restoring force field.
+ */
+void ABossEnemy::RestoreForceFieldNiagara()
 {
 	UNiagaraFunctionLibrary::SpawnSystemAttached(
 			ForceFieldRestore,
@@ -133,14 +161,13 @@ void ABossEnemy::RestoreForceField()
 			true
 		);
 	
-	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	ForceField->SetVisibility(true);
-	bIsForceFieldActive = true;
-	EventBus->OnForceFieldChange.Broadcast(true);
-	
-	SetActorTickEnabled(true);
-	CurrentState = EBossState::ReturningToPatrolRoute;
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceField,
+		2.8f,
+		false
+		);
 }
 
 /* Broadcast final blow as success. Enable actor tick and get retreat direction away from patrol route. Change state
@@ -186,7 +213,7 @@ void ABossEnemy::DestroySelfEnemy()
 {
 	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
 	
-	GetWorldTimerManager().ClearTimer(ForceFieldRestoreHandle);
+	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
 	EventBus->OnFinalBlowQTE.Broadcast(true);
 	PlayFinalBlowQTE();
 }
