@@ -10,6 +10,7 @@
 #include "WeaponDropOff.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GruntEnemy.h"
+#include "Blueprint/UserWidget.h"
 
 class AEnemyPatrolRoute;
 
@@ -55,7 +56,6 @@ void ABossEnemy::BeginPlay()
 	}
 
 	SummonGruntEnemies();
-	// Move rest of boss begin play here
 }
 
 /* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
@@ -157,19 +157,12 @@ void ABossEnemy::AttackPlayer()
 // Destroys self and completes the wave
 void ABossEnemy::DestroySelfEnemy()
 {
-	// Get reference to the game mode
-	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameMode)) return;
+	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
 	
-	// Get reference to the wave manager
-	UWaveManagerComponent* WaveManagerComponent = Cast<UWaveManagerComponent>(GameMode->GetWaveManagementComponent());
-	if (!IsValid(WaveManagerComponent)) return;
-	
-	WaveManagerComponent->WaveCompleted(); // Complete the wave when defeated
-	Destroy(); // Destroy self
+	PlayFinalBlowQTE();
 }
 
-/* Changes state to hovering and gets rotation to look at village with 0 pitch. Starts timer to destory village.
+/* Changes state to hovering and gets rotation to look at village with 0 pitch. Starts timer to destroy village.
  */
 void ABossEnemy::SwitchToHoveringState()
 {
@@ -216,7 +209,8 @@ void ABossEnemy::ClearDestroyVillageTimer()
 	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
 }
 
-/*
+/* Gets percentage of destroy village timer that has elapsed.
+ * @return float - float percent of elapsed time of destroy village timer.
  */
 float ABossEnemy::GetDestroyVillageTimerProgress() const
 {
