@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameModeLevel.generated.h"
 
+enum class EBossState : uint8;
 class UWaveManagerComponent;
 class AGameStateLevel;
 class UEnemyManagerComponent;
@@ -72,6 +73,18 @@ private:
 	UEventBusComponent* EventBus;
 	
 	// Name of the spawn grunt function for runtime
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Functions", meta = (AllowPrivateAccess = true))
 	FString SpawnGruntFunctionName;
+	
+	// Calls win level when boss state is defeated.
+	UFUNCTION(Category = "Game State")
+	void OnBossDefeated(EBossState NewState);
+	
+	// Timer handle for timer before win level.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game State", meta = (AllowPrivateAccess = true))
+	FTimerHandle LevelWinHandle;
+	
+	// Time before level win is called.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Game State", meta = (AllowPrivateAccess = true))
+	float LevelWinHandleTime = 5.0f;
 };

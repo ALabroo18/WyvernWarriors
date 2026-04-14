@@ -1,4 +1,5 @@
 #include "GameManagers/GameModeLevel.h"
+#include "BossEnemy.h"
 #include "GameManagers/GameStateLevel.h"
 #include "GameManagers/Components/CannonManagerComponent.h"
 #include "GameManagers/Components/EnemyManagerComponent.h"
@@ -32,4 +33,23 @@ void AGameModeLevel::BeginPlay()
 	EnemyManager->SetupEnemyManager();
 	WaveManager->SetupWaveManager();
 	WaveManager->NewWave();
+	
+	EventBus->OnBossStateChange.AddDynamic(this, &AGameModeLevel::OnBossDefeated);
+}
+
+/* 
+ */
+void AGameModeLevel::OnBossDefeated(EBossState const NewState)
+{
+	if (NewState == EBossState::Defeated)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Boss has been defeated, set timer to win level."))
+		GetWorldTimerManager().SetTimer(
+			LevelWinHandle,
+			this,
+			&AGameModeLevel::WinLevel,
+			LevelWinHandleTime,
+			false
+		);
+	}
 }

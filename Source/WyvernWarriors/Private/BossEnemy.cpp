@@ -1,6 +1,5 @@
 #include "BossEnemy.h"
 #include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/WaveManagerComponent.h"
 #include "GameManagers/Components//EnemyManagerComponent.h"
 #include "GameManagers/Components//EventBusComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -11,6 +10,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
+#include "EnemyPatrolRoute.h"
 
 class AEnemyPatrolRoute;
 
@@ -80,6 +80,9 @@ void ABossEnemy::Tick(float const DeltaTime)
 	case EBossState::Hovering:
 		RotateThenHover(DeltaTime);
 		break;
+	case EBossState::Defeated:
+		RotateAndMove(RetreatDirection, DeltaTime);
+		break;
 	}
 }
 
@@ -140,6 +143,30 @@ void ABossEnemy::RestoreForceField()
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
 
+/* Broadcast final blow as success. Enable actor tick and get retreat direction away from patrol route. Change state
+ * to defeated and broadcast change.
+ */
+void ABossEnemy::FinalBlowQTESuccess()
+{
+	EventBus->OnFinalBlowQTE.Broadcast(false);
+	SetActorTickEnabled(true);
+	RetreatDirection.X = GetActorLocation().X - PatrolRoute->GetActorLocation().X;
+	RetreatDirection.Y = GetActorLocation().Y - PatrolRoute->GetActorLocation().Y;
+	RetreatDirection.Z = PatrolRoute->GetActorLocation().Z;
+	RetreatDirection.Normalize();
+	CurrentState = EBossState::Defeated;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+}
+
+/* Broadcast final blow as a fail. Set health to 10% of max and restore force field.
+ */
+void ABossEnemy::FinalBlowQTEFailure()
+{
+	EventBus->OnFinalBlowQTE.Broadcast(false);
+	CurrentHealth = MaxHealth/10;
+	RestoreForceField();
+}
+
 // Performs a lightning strike attack on the player
 void ABossEnemy::AttackPlayer()
 {
@@ -159,6 +186,8 @@ void ABossEnemy::DestroySelfEnemy()
 {
 	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
 	
+	GetWorldTimerManager().ClearTimer(ForceFieldRestoreHandle);
+	EventBus->OnFinalBlowQTE.Broadcast(true);
 	PlayFinalBlowQTE();
 }
 
@@ -253,7 +282,7 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
 	FVector DirectionToVillage = VillageHoverLocation - GetActorLocation();
 
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(500.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(1000.f))
 	{
 		SwitchToHoveringState();
 		return;
@@ -297,7 +326,7 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 void ABossEnemy::GetVillageLocation()
 {
 	FHitResult Hit;
-	FCollisionShape const MySphere = FCollisionShape::MakeSphere(2000.f);
+	FCollisionShape const MySphere = FCollisionShape::MakeSphere(3000.f);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
 	CollisionParams.AddIgnoredActor(PlayerCharacter);
