@@ -17,40 +17,52 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 {
 	FVector SpawnLocation; // Location where the enemy will be spawned
 	FRotator SpawnRotation; // Rotation for the spawned enemy
-
-	// Determine spawn location and rotation based on whether a patrol route was specified
-	if (IsValid(SpecificPatrolRoute))
+	bool bIsPlayerTooClose = true;
+	int SpawnAttempts = 0;
+	
+	while (bIsPlayerTooClose)
 	{
-		DistanceAlongSpline = FMath::RandRange(0.f, SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetSplineLength());
-		SpawnLocation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
-		SpawnRotation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
-	}
-	else
-	{
-		if (EnemySpawnPoints.IsEmpty())
+		// Determine spawn location and rotation based on whether a patrol route was specified
+		if (IsValid(SpecificPatrolRoute))
 		{
-			UE_LOG(LogTemp, Error, TEXT("No spawn points for enemy spawning."));
-			return FTransform::Identity;
+			DistanceAlongSpline = FMath::RandRange(0.f, SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetSplineLength());
+			SpawnLocation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
+			SpawnRotation = SpecificPatrolRoute->GetComponentByClass<USplineComponent>()->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World);
+		}
+		else
+		{
+			if (EnemySpawnPoints.IsEmpty())
+			{
+				UE_LOG(LogTemp, Error, TEXT("No spawn points for enemy spawning."));
+				return FTransform::Identity;
+			}
+		
+			const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
+			if (!IsValid(SpawnPoint))
+			{
+				UE_LOG(LogTemp, Error, TEXT("Random enemy spawn point chosen is invalid."));
+				return FTransform::Identity;
+			}
+			SpawnLocation = SpawnPoint->GetActorLocation(); // Get the location of the spawn point
+			SpawnRotation = FRotator(0.f, 0.f, 0.f); // Default rotation for the spawned enemy
 		}
 		
-		const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
-		if (!IsValid(SpawnPoint))
+		FVector const PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation(); // Get the player's location'
+		if (float const DistanceToPlayer = FVector::Dist(SpawnLocation, PlayerLocation); DistanceToPlayer < MinimumPlayerSpawnDistance) 
 		{
-			UE_LOG(LogTemp, Error, TEXT("Random enemy spawn point chosen is invalid."));
+			UE_LOG(LogTemp, Warning, TEXT("Player too close to spawn point for spawning: %f."), DistanceToPlayer);
+			SpawnAttempts++;
+		}
+		else
+		{
+			bIsPlayerTooClose = false;
+		}
+		
+		if (SpawnAttempts >= 10)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Too many failed spawn attempts, failed to get spawn transform."));
 			return FTransform::Identity;
 		}
-		SpawnLocation = SpawnPoint->GetActorLocation(); // Get the location of the spawn point
-		SpawnRotation = FRotator(0.f, 0.f, 0.f); // Default rotation for the spawned enemy
-	}
-
-
-	FVector const PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation(); // Get the player's location'
-	float const DistanceToPlayer = FVector::Dist(SpawnLocation, PlayerLocation); // Calculate distance from spawn point to player
-	
-	if (DistanceToPlayer < MinimumPlayerSpawnDistance) 
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Player too close to spawn point for spawning: %f."), DistanceToPlayer);
-		return FTransform::Identity;
 	}
 	
 	TArray<AActor*> NearbyEnemies;
