@@ -11,6 +11,7 @@
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "EnemyPatrolRoute.h"
+#include "KismetTraceUtils.h"
 #include "NiagaraComponent.h"
 
 class AEnemyPatrolRoute;
@@ -364,7 +365,7 @@ void ABossEnemy::GetVillageLocation()
 	
 	while (true)
 	{
-		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
+		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)]; // Error here after playing level 1 after dying
 		ValidWeaponDropOffs.Remove(WeaponDropOff);
 		
 		VillageHoverLocation = WeaponDropOff->GetActorLocation() + BossLocationOffset;
@@ -436,6 +437,8 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 
 	int32 Attempts = 0; // Counter to prevent infinite loops
 	int32 ConfirmedStrikes = 0; // Counter for strikes that will be doneS
+	
+	StrikeLocations.Add(FuturePlayerLocation); // First strike is always directly on player
 
 	// Generate unique strike locations
 	while (ConfirmedStrikes < NumberOfStrikes)
@@ -477,7 +480,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
 		// Spawn lightning effect at strike location
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningTelegraphEffect,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
@@ -487,6 +490,8 @@ void ABossEnemy::TelegraphLightningStrikes()
 			true,
 			ENCPoolMethod::AutoRelease
 		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
 	}
 	
 	// Set timer to execute lightning strikes after delay
@@ -526,18 +531,35 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			FRotator::ZeroRotator,
 			FVector(1.f),
 			true,
-			true,
+			false,
 			ENCPoolMethod::AutoRelease
 		);
 		
+		DrawDebugSphereTraceSingle(
+			GetWorld(),
+			StrikeLocation + FVector(0.f, 0.f, 50000.f),
+			StrikeLocation * FVector(1.f, 1.f, 0.f),
+			LightningStrikeDamageRadius,
+			EDrawDebugTrace::ForDuration,
+			false,
+			FHitResult(),
+			FColor::Red,
+			FColor::Green,
+			2.f
+		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
+		
 		if (bHit)
 		{
-			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), HitResults.Last().Location);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), HitResults.Last().Location - FVector(.0f, .0f, LightningStrikeDamageRadius));
 			
 			for (const FHitResult& HitResult : HitResults)
 			{
+				UE_LOG(LogTemp, Log, TEXT("Lightning hit actor: %s"), *HitResult.GetActor()->GetName());
 				if (HitResult.GetActor() == PlayerCharacter)
 				{
+					UE_LOG(LogTemp, Warning, TEXT("Player was hit by lightning."));
 					UGameplayStatics::ApplyDamage(
 						PlayerCharacter,
 						LightningStrikeDamage,
@@ -552,9 +574,11 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 		}
 		else
 		{
-			FVector LightningEndLocation = FVector(StrikeLocation.X, StrikeLocation.Y, -50000.f);
+			FVector const LightningEndLocation = FVector(StrikeLocation.X, StrikeLocation.Y, -50000.f);
 			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), LightningEndLocation);
 		}
+		
+		LightningStrike->Activate(true);
 	}
 }
 
