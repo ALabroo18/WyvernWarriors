@@ -11,6 +11,7 @@
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "EnemyPatrolRoute.h"
+#include "NiagaraComponent.h"
 
 class AEnemyPatrolRoute;
 
@@ -500,7 +501,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 // Executes the lightning strikes at the specified locations
 void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations)
 {
-	FHitResult HitResult; // Hit result for collision detection
+	TArray<FHitResult> HitResults; // Hit result for collision detection
 	FCollisionQueryParams CollisionParams; // Collision query parameters
 	CollisionParams.bTraceComplex = false; // Don't use complex collision
 	CollisionParams.bReturnPhysicalMaterial = false; // No need for physical material
@@ -508,7 +509,17 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 	// Spawn lightning effects at strike locations
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		bool const bHit = GetWorld()->SweepMultiByChannel(
+			HitResults,
+			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
+			StrikeLocation * FVector(1.f, 1.f, 0.f), // End at ground level
+			FQuat::Identity,
+			PLAYER_COLLISION_CHANNEL,
+			FCollisionShape::MakeSphere(LightningStrikeDamageRadius), // Small sphere for sweep
+			CollisionParams
+		);
+		
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningStrikeEffect,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
@@ -518,27 +529,31 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			true,
 			ENCPoolMethod::AutoRelease
 		);
-
-		bool bHit = GetWorld()->SweepSingleByChannel(
-			HitResult,
-			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
-			StrikeLocation * FVector(1.f, 1.f, 0.f), // End at ground level
-			FQuat::Identity,
-			PLAYER_COLLISION_CHANNEL,
-			FCollisionShape::MakeSphere(LightningStrikeDamageRadius), // Small sphere for sweep
-			CollisionParams
-		);
-
-		// Apply damage if player is hit
+		
 		if (bHit)
 		{
-			UGameplayStatics::ApplyDamage(
-				PlayerCharacter,
-				LightningStrikeDamage,
-				nullptr,
-				this,
-				UDamageType::StaticClass()
-			);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), HitResults.Last().Location);
+			
+			for (const FHitResult& HitResult : HitResults)
+			{
+				if (HitResult.GetActor() == PlayerCharacter)
+				{
+					UGameplayStatics::ApplyDamage(
+						PlayerCharacter,
+						LightningStrikeDamage,
+						nullptr,
+						this,
+						UDamageType::StaticClass()
+					);
+					
+					break;
+				}
+			}
+		}
+		else
+		{
+			FVector LightningEndLocation = FVector(StrikeLocation.X, StrikeLocation.Y, -50000.f);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), LightningEndLocation);
 		}
 	}
 }
