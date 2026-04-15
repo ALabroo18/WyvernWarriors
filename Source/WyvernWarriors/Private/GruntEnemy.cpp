@@ -163,6 +163,7 @@ void AGruntEnemy::DestroySelfEnemy()
 		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
 	EventBus->OnGruntDeath.Broadcast(this);
+	IncreaseKillCombo();
 	ToggleGruntEnemy(false);
 }
 

@@ -19,7 +19,8 @@ enum class EBossState : uint8
 	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
 	ApproachVillage UMETA(DisplayName = "Approaching Village"),
 	Hovering UMETA(DisplayName = "Hovering over Villages"),
-	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route")
+	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route"),
+	Defeated UMETA(DisplayName = "Defeated")
 };
 
 UCLASS()
@@ -68,6 +69,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Force Field")
 	void RestoreForceField();
 
+protected:
+	// Play final blow QTE
+	UFUNCTION(BlueprintImplementableEvent, Category = "Behavior")
+	void PlayFinalBlowQTE();
+	
+	// Sets boss into defeated state
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	void FinalBlowQTESuccess();
+	
+	// Restore boss health and continue fighting the player
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	void FinalBlowQTEFailure();
+	
 private:
 	// Sets up boss components
 	ABossEnemy();
@@ -93,8 +107,16 @@ private:
 	FTimerHandle DestroyVillageHandle;
 	
 	// Time for destroy village timer,
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	float TimeToDestroyVillage = 30.f;
+	
+	// QTE for final boss strike.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	TSubclassOf<UUserWidget> FinalBlowQTE;
+	
+	// Direction boss retreats in when defeated.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	FVector RetreatDirection = FVector::ZeroVector;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")

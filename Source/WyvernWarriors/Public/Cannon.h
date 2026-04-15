@@ -41,6 +41,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
 	float GetDistanceToBossSquared();
 	
+protected:
 	// Change opacity of ready to fire widget.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Firing")
 	void UpdateFireWidget() const;

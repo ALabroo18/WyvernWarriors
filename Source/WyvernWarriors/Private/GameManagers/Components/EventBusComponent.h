@@ -17,6 +17,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGruntDeath, AGruntEnemy*, DeadGru
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBossStateChange, EBossState, BossState); // Delegate for boss state changes
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, bool, bIsForceFieldActive); // Delegate for force field state change
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVillageDestroyed, FName, VillageDestroyedTag); // Delegate for when boss destroys village.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFinalBlowQTE, bool, bInFinalBlow); // Delegate for when boss destroys village.
+
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -60,6 +62,10 @@ public:
 	// Delegate for when boss destroys village.
 	UPROPERTY(BlueprintAssignable, Category = "Boss")
 	FOnVillageDestroyed OnVillageDestroyed;
+	
+	// Delegate for when boss destroys village.
+	UPROPERTY(BlueprintAssignable, Category = "Boss")
+	FOnFinalBlowQTE OnFinalBlowQTE;
 	
 private:	
 	// Sets default values for this component's properties
