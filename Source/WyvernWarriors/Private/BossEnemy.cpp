@@ -11,8 +11,8 @@
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "EnemyPatrolRoute.h"
-#include "KismetTraceUtils.h"
 #include "NiagaraComponent.h"
+#include "BossAnimInstance.h"
 
 class AEnemyPatrolRoute;
 
@@ -46,6 +46,7 @@ void ABossEnemy::BeginPlay()
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
 	
 	TArray<AActor*> TempActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
@@ -124,6 +125,8 @@ void ABossEnemy::DestroyForceFieldNiagara()
 		EAttachLocation::SnapToTargetIncludingScale,
 		true
 	);
+	
+	BossAnimInstance->PlayDazedAnimation();
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
