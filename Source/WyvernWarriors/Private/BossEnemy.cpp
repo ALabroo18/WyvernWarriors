@@ -535,19 +535,6 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			ENCPoolMethod::AutoRelease
 		);
 		
-		DrawDebugSphereTraceSingle(
-			GetWorld(),
-			StrikeLocation + FVector(0.f, 0.f, 50000.f),
-			StrikeLocation * FVector(1.f, 1.f, 0.f),
-			LightningStrikeDamageRadius,
-			EDrawDebugTrace::ForDuration,
-			false,
-			FHitResult(),
-			FColor::Red,
-			FColor::Green,
-			2.f
-		);
-		
 		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
 		
 		if (bHit)
