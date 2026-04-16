@@ -110,7 +110,7 @@ void ABossEnemy::DestroyForceField()
 }
 
 /* Stop lightning strikes and play the force field destroyed niagara effect. Play the dazed animation. Set timer
- * to finish destroying forcefield.
+ * to finish destroying force field.
  */
 void ABossEnemy::DestroyForceFieldNiagara()
 {

@@ -63,20 +63,18 @@ void ACannonball::SetPickUpSphereCollision(bool const bIsEnabled)
 	}
 }
 
-/* Activates pickup widget and sets overlay highlight material.
+/* Activates pickup widget.
  */
 void ACannonball::ActivatePickUpUI() const
 {
 	PickupWidget->SetVisibility(true);
-	StaticMesh->SetOverlayMaterial(HighlightMaterial);
 }
 
-/* Deactivates pickup widget and clears overlay highlight material.
+/* Deactivates pickup widget.
  */
 void ACannonball::DeactivatePickUpUI() const
 {
 	PickupWidget->SetVisibility(false);
-	StaticMesh->SetOverlayMaterial(nullptr);
 }
 
 /* Returns the speed at which the cannonball was fired
@@ -87,7 +85,7 @@ float ACannonball::GetProjectileSpeed() const
 	return ProjectileMovement->GetMaxSpeed();
 }
 
-/* Sets the activeness of the cannonball, which includes visibility, collision, movement, the highlight material.
+/* Sets the activeness of the cannonball, which includes visibility and collision. Stops movement if deactivating.
  * @param bIsActive - Whether the cannonball should be active or not
  */
 void ACannonball::SetActiveness(bool const bIsActive)
@@ -122,7 +120,6 @@ void ACannonball::PickUpCannonball(USkeletalMeshComponent* WyvernMesh, FName con
 {
 	AttachToComponent(WyvernMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	SetPickUpSphereCollision(false);
-	StaticMesh->SetOverlayMaterial(nullptr);
 	PickupWidget->SetVisibility(false);
 }
 
