@@ -15,7 +15,7 @@
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
 FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
 {
-	FVector SpawnLocation; // Location where the enemy will be spawned
+	FVector SpawnLocation = FVector::Zero(); // Location where the enemy will be spawned
 	FRotator SpawnRotation; // Rotation for the spawned enemy
 	bool bIsPlayerTooClose = true;
 	int SpawnAttempts = 0;
