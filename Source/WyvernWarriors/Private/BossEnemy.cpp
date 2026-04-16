@@ -109,8 +109,8 @@ void ABossEnemy::DestroyForceField()
 	);
 }
 
-/* Stop lightning strikes and play the force field destroyed niagara effect. Set timer to finish destroying force
- * field.
+/* Stop lightning strikes and play the force field destroyed niagara effect. Play the dazed animation. Set timer
+ * to finish destroying forcefield.
  */
 void ABossEnemy::DestroyForceFieldNiagara()
 {
@@ -152,7 +152,7 @@ void ABossEnemy::RestoreForceField()
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
 
-/* Plays force field restored niagara effect. Set timer to finish restoring force field.
+/* Plays force field restored niagara effect and stops dazed animation. Set timer to finish restoring force field.
  */
 void ABossEnemy::RestoreForceFieldNiagara()
 {
@@ -165,6 +165,8 @@ void ABossEnemy::RestoreForceFieldNiagara()
 			EAttachLocation::SnapToTargetIncludingScale,
 			true
 		);
+
+	BossAnimInstance->StopDazedAnimation();
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,

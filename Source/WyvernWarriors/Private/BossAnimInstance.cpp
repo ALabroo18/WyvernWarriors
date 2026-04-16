@@ -25,20 +25,23 @@ void UBossAnimInstance::StopDazedAnimation()
 	);
 }
 
-/* Interp dazed blend alpha to target value, and stop dazed blend timer when target reached.
+/* Interp dazed blend alpha to target value, and stop dazed blend timer when nearly equal to target.
  * @param Target - float value that dazed blend alpha will become.
  */
 void UBossAnimInstance::ChangeDazedBlend(float const Target)
 {
-	UKismetMathLibrary::FInterpTo(
+	DazedBlendAlpha = UKismetMathLibrary::FInterpTo(
 		DazedBlendAlpha, 
 		Target, 
 		GetWorld()->GetDeltaSeconds(), 
-		5.f
+		DazedBlendInterpSpeed
 	);
+
+	UE_LOG(LogTemp, Log, TEXT("Dazed blend alpha: %f"), DazedBlendAlpha);
 	
-	if (DazedBlendAlpha == Target)
+	if (FMath::IsNearlyEqual(DazedBlendAlpha, Target, .01f))
 	{
+		DazedBlendAlpha = Target;
 		DazedBlendTimerHandle.Invalidate();
 	}
 }
