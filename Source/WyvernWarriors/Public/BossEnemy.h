@@ -12,6 +12,7 @@ class UMaterial;
 class UNiagaraSystem;
 class UStaticMeshComponent;
 class AWeaponDropOff;
+class UBossAnimInstance;
 
 UENUM(BlueprintType)
 enum class EBossState : uint8
@@ -125,6 +126,10 @@ private:
 	// Direction boss retreats in when defeated.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	FVector RetreatDirection = FVector::ZeroVector;
+	
+	// Animation instance of boss.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	UBossAnimInstance* BossAnimInstance;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")
