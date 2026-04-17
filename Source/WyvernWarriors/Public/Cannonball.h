@@ -41,11 +41,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void SetPickUpSphereCollision(bool const bIsEnabled);
 	
-	// Activates pickup widget and sets overlay highlight material.
+	// Activates pickup widget.
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void ActivatePickUpUI() const;
 	
-	// Deactivates pickup widget and clears overlay highlight material.
+	// Deactivates pickup widget.
 	UFUNCTION(BlueprintCallable, Category = "Cannonball")
 	void DeactivatePickUpUI() const;
 	
@@ -83,10 +83,6 @@ private:
 	// Initial location of the cannonball for resetting after use
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Cannonball", meta = (AllowPrivateAccess = true))
 	FVector InitialLocation;
-	
-	// Material used to indicate location
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannonball", meta = (AllowPrivateAccess = true))
-	UMaterial* HighlightMaterial;
 	
 	// Bool for if cannonball has been fired
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannonball", meta = (AllowPrivateAccess = true))

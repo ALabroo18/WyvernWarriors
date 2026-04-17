@@ -58,6 +58,15 @@ void AGruntEnemy::BeginPlay()
 	}
 }
 
+/*
+ */
+void AGruntEnemy::CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid) const
+{
+	Super::CheckForMovementCollision(Direction, ActorsToAvoid);
+	
+	// Use large detection sphere for terrain and non-enemy actors (excluding player).
+}
+
 /* Toggles the grunt as being active or inactive by setting collisions and movement speed. Also toggles tick and
  * visibility of grunt enemy. Tells controller to unpossess this grunt.
  * @param bIsActive - whether the grunt enemy is being made active or inactive
