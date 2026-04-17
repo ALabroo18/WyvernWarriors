@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "EnemyBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/SplineComponent.h"
@@ -96,29 +93,16 @@ void AEnemyBase::BeginPlay()
 	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
 }
 
-/* Finds rotation based on input direction and direction away from input array of actors to avoid if there is any.
- * Keeps rotation from moving enemy beneath 0 then converts to quaternion to use for interpolation. Gets difference
- * between rotation quaternion and current quaternion to slow down speed when difference is large. Adds movement input
- * based on speed.
+/* Finds rotation based on input direction and possible collisions. Keeps rotation from moving enemy beneath 0 then
+ * converts to quaternion to use for interpolation. Gets difference between rotation quaternion and current quaternion
+ * to slow down speed when difference is large. Adds movement input based on speed.
  * @param Direction - FVector reference of direction that enemy should move
  * @param DeltaTime = float that is the amount of time since last tick
  * @param ActorsToAvoid - Array of actors that the enemy should move away from, empty by default
  */
 void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid)
 {
-
-	if (!ActorsToAvoid.IsEmpty())
-	{
-		FVector DirectionAwaySum = FVector::Zero();
-		for (const AActor* Enemy : ActorsToAvoid)
-		{
-			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
-			DirectionAwaySum += SingleDirection;
-		}
-		
-		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
-		Direction = (Direction + DirectionAway).GetSafeNormal();
-	}
+	CheckForMovementCollision(Direction, ActorsToAvoid);
 
 	FRotator Rotation = Direction.Rotation();
 	
@@ -135,6 +119,27 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference));
 	
 	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true);
+}
+
+/* Checks if there are actors to avoid, and changes direction to move away from them if so. Averages the direction
+ * away from each actor if there are multiple.
+ * @param Direction - FVector reference of direction that enemy should move, modified if there are actors to avoid.
+ * @param ActorsToAvoid - Array of actors that the enemy should move away from.
+ */
+void AEnemyBase::CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid) const
+{
+	if (!ActorsToAvoid.IsEmpty())
+	{
+		FVector DirectionAwaySum = FVector::Zero();
+		for (const AActor* Enemy : ActorsToAvoid)
+		{
+			FVector const SingleDirection = (GetActorLocation() - Enemy->GetActorLocation()).GetSafeNormal();
+			DirectionAwaySum += SingleDirection;
+		}
+		
+		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
+		Direction = (Direction + DirectionAway).GetSafeNormal();
+	}
 }
 
 /* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.

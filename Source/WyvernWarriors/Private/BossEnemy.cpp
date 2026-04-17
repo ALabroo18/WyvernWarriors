@@ -11,6 +11,8 @@
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "EnemyPatrolRoute.h"
+#include "NiagaraComponent.h"
+#include "BossAnimInstance.h"
 
 class AEnemyPatrolRoute;
 
@@ -44,6 +46,7 @@ void ABossEnemy::BeginPlay()
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
 	
 	TArray<AActor*> TempActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
@@ -86,10 +89,30 @@ void ABossEnemy::Tick(float const DeltaTime)
 	}
 }
 
-/* Stop lightning strikes first. Spawn force field break niagara system then set force field inactive in collision
- * and visibility. Broadcast force field change.
+/* Spawn force field break niagara system then set force field inactive in collision and visibility. Broadcast force
+ * field change. Set timer to restore force field.
  */
 void ABossEnemy::DestroyForceField()
+{
+	bIsForceFieldActive = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ForceField->SetVisibility(false);
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
+	EventBus->OnForceFieldChange.Broadcast(false); 
+	
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceFieldNiagara,
+		TimeToRestoreForceField,
+		false
+	);
+}
+
+/* Stop lightning strikes and play the force field destroyed niagara effect. Play the dazed animation. Set timer
+ * to finish destroying force field.
+ */
+void ABossEnemy::DestroyForceFieldNiagara()
 {
 	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	
@@ -103,25 +126,35 @@ void ABossEnemy::DestroyForceField()
 		true
 	);
 	
-	bIsForceFieldActive = false;
-	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ForceField->SetVisibility(false);
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
-	EventBus->OnForceFieldChange.Broadcast(false); 
+	BossAnimInstance->PlayDazedAnimation();
 	
 	GetWorldTimerManager().SetTimer(
-		ForceFieldRestoreHandle,
+		ForceFieldHandle,
 		this,
-		&ABossEnemy::RestoreForceField,
-		TimeToRestoreForceField,
+		&ABossEnemy::DestroyForceField,
+		0.7f,
 		false
-	);
+		);
 }
 
-/* Plays force field restored niagara effect and sets force field active with collision and visibility. Broadcast
- * force field change.
+/* Sets force field active with collision and visibility. Broadcast force field change. Enable actor tick and change
+ * state to return to patrol route.
  */
 void ABossEnemy::RestoreForceField()
+{
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
+	bIsForceFieldActive = true;
+	EventBus->OnForceFieldChange.Broadcast(true);
+	
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
+}
+
+/* Plays force field restored niagara effect and stops dazed animation. Set timer to finish restoring force field.
+ */
+void ABossEnemy::RestoreForceFieldNiagara()
 {
 	UNiagaraFunctionLibrary::SpawnSystemAttached(
 			ForceFieldRestore,
@@ -132,15 +165,16 @@ void ABossEnemy::RestoreForceField()
 			EAttachLocation::SnapToTargetIncludingScale,
 			true
 		);
+
+	BossAnimInstance->StopDazedAnimation();
 	
-	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	ForceField->SetVisibility(true);
-	bIsForceFieldActive = true;
-	EventBus->OnForceFieldChange.Broadcast(true);
-	
-	SetActorTickEnabled(true);
-	CurrentState = EBossState::ReturningToPatrolRoute;
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceField,
+		2.8f,
+		false
+		);
 }
 
 /* Broadcast final blow as success. Enable actor tick and get retreat direction away from patrol route. Change state
@@ -186,7 +220,7 @@ void ABossEnemy::DestroySelfEnemy()
 {
 	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
 	
-	GetWorldTimerManager().ClearTimer(ForceFieldRestoreHandle);
+	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
 	EventBus->OnFinalBlowQTE.Broadcast(true);
 	PlayFinalBlowQTE();
 }
@@ -336,7 +370,7 @@ void ABossEnemy::GetVillageLocation()
 	
 	while (true)
 	{
-		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
+		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)]; // Error here after playing level 1 after dying
 		ValidWeaponDropOffs.Remove(WeaponDropOff);
 		
 		VillageHoverLocation = WeaponDropOff->GetActorLocation() + BossLocationOffset;
@@ -408,6 +442,8 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 
 	int32 Attempts = 0; // Counter to prevent infinite loops
 	int32 ConfirmedStrikes = 0; // Counter for strikes that will be doneS
+	
+	StrikeLocations.Add(FuturePlayerLocation); // First strike is always directly on player
 
 	// Generate unique strike locations
 	while (ConfirmedStrikes < NumberOfStrikes)
@@ -449,7 +485,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
 		// Spawn lightning effect at strike location
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningTelegraphEffect,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
@@ -459,6 +495,8 @@ void ABossEnemy::TelegraphLightningStrikes()
 			true,
 			ENCPoolMethod::AutoRelease
 		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
 	}
 	
 	// Set timer to execute lightning strikes after delay
@@ -473,7 +511,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 // Executes the lightning strikes at the specified locations
 void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations)
 {
-	FHitResult HitResult; // Hit result for collision detection
+	TArray<FHitResult> HitResults; // Hit result for collision detection
 	FCollisionQueryParams CollisionParams; // Collision query parameters
 	CollisionParams.bTraceComplex = false; // Don't use complex collision
 	CollisionParams.bReturnPhysicalMaterial = false; // No need for physical material
@@ -481,19 +519,8 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 	// Spawn lightning effects at strike locations
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			LightningStrikeEffect,
-			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
-			FRotator::ZeroRotator,
-			FVector(1.f),
-			true,
-			true,
-			ENCPoolMethod::AutoRelease
-		);
-
-		bool bHit = GetWorld()->SweepSingleByChannel(
-			HitResult,
+		bool const bHit = GetWorld()->SweepMultiByChannel(
+			HitResults,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
 			StrikeLocation * FVector(1.f, 1.f, 0.f), // End at ground level
 			FQuat::Identity,
@@ -501,18 +528,49 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			FCollisionShape::MakeSphere(LightningStrikeDamageRadius), // Small sphere for sweep
 			CollisionParams
 		);
-
-		// Apply damage if player is hit
+		
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			LightningStrikeEffect,
+			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
+			FRotator::ZeroRotator,
+			FVector(1.f),
+			true,
+			false,
+			ENCPoolMethod::AutoRelease
+		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
+		
 		if (bHit)
 		{
-			UGameplayStatics::ApplyDamage(
-				PlayerCharacter,
-				LightningStrikeDamage,
-				nullptr,
-				this,
-				UDamageType::StaticClass()
-			);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), HitResults.Last().Location - FVector(.0f, .0f, LightningStrikeDamageRadius));
+			
+			for (const FHitResult& HitResult : HitResults)
+			{
+				UE_LOG(LogTemp, Log, TEXT("Lightning hit actor: %s"), *HitResult.GetActor()->GetName());
+				if (HitResult.GetActor() == PlayerCharacter)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Player was hit by lightning."));
+					UGameplayStatics::ApplyDamage(
+						PlayerCharacter,
+						LightningStrikeDamage,
+						nullptr,
+						this,
+						UDamageType::StaticClass()
+					);
+					
+					break;
+				}
+			}
 		}
+		else
+		{
+			FVector const LightningEndLocation = FVector(StrikeLocation.X, StrikeLocation.Y, -50000.f);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), LightningEndLocation);
+		}
+		
+		LightningStrike->Activate(true);
 	}
 }
 
