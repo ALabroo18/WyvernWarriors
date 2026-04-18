@@ -63,6 +63,10 @@ protected:
 	UFUNCTION(Category = "Movement")	
 	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
 	
+	// Modifies direction if there is possible collisions during movement.
+	UFUNCTION(Category = "Movement")
+	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const;
+	
 	// Array of enemies that are within a certain radius
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
 	TArray<AActor*> NearbyEnemies;

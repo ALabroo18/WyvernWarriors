@@ -102,6 +102,9 @@ private:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bIsEggThief = false;
 	
+	// Modifies direction if there is possible collisions during movement.
+	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const override;
+	
 	// Projectile used for attacking player
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
 	TSubclassOf<AGruntEnemyProjectile> AttackProjectile;

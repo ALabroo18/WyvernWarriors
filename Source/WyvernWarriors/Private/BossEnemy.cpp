@@ -11,8 +11,8 @@
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "EnemyPatrolRoute.h"
-#include "KismetTraceUtils.h"
 #include "NiagaraComponent.h"
+#include "BossAnimInstance.h"
 
 class AEnemyPatrolRoute;
 
@@ -46,6 +46,7 @@ void ABossEnemy::BeginPlay()
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
 	
 	TArray<AActor*> TempActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
@@ -108,8 +109,8 @@ void ABossEnemy::DestroyForceField()
 	);
 }
 
-/* Stop lightning strikes and play the force field destroyed niagara effect. Set timer to finish destroying force
- * field.
+/* Stop lightning strikes and play the force field destroyed niagara effect. Play the dazed animation. Set timer
+ * to finish destroying force field.
  */
 void ABossEnemy::DestroyForceFieldNiagara()
 {
@@ -124,6 +125,8 @@ void ABossEnemy::DestroyForceFieldNiagara()
 		EAttachLocation::SnapToTargetIncludingScale,
 		true
 	);
+	
+	BossAnimInstance->PlayDazedAnimation();
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -149,7 +152,7 @@ void ABossEnemy::RestoreForceField()
 	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
 
-/* Plays force field restored niagara effect. Set timer to finish restoring force field.
+/* Plays force field restored niagara effect and stops dazed animation. Set timer to finish restoring force field.
  */
 void ABossEnemy::RestoreForceFieldNiagara()
 {
@@ -162,6 +165,8 @@ void ABossEnemy::RestoreForceFieldNiagara()
 			EAttachLocation::SnapToTargetIncludingScale,
 			true
 		);
+
+	BossAnimInstance->StopDazedAnimation();
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -477,6 +482,9 @@ void ABossEnemy::TelegraphLightningStrikes()
 {
 	TArray<FVector> LightningStrikeLocations = GenerateLightningStrikeLocations(); // Get strike locations
 
+	USoundBase* RandomBossRoarSFX = BossRoarSFX[FMath::RandRange(0, BossRoarSFX.Num() - 1)];
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), RandomBossRoarSFX, GetActorLocation(), BossRoarSFXVolume);
+	
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
 		// Spawn lightning effect at strike location
@@ -566,6 +574,7 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 		}
 		
 		LightningStrike->Activate(true);
+		UGameplayStatics::PlaySound2D(GetWorld(), LightningStrikeSFX, LightningStrikeSFXVolume, 1.f, 0.f, LightningStrikeSFXConcurrency);
 	}
 }
 
