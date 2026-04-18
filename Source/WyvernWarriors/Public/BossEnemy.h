@@ -131,6 +131,30 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	UBossAnimInstance* BossAnimInstance;
 	
+	// Array of boss roar sound effects.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	TArray<USoundBase*> BossRoarSFX;
+	
+	// Volume of boss roar sound effects.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float BossRoarSFXVolume = 1.f;
+	
+	// Sound effect for when lightning strikes.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* LightningStrikeSFX;
+	
+	// Volume of sound effect for when lightning strikes.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float LightningStrikeSFXVolume = 1.f;
+	
+	// Sound concurrency settings for the lightning strikes.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundConcurrency* LightningStrikeSFXConcurrency;
+	
+	// Sound effect for boss intro cutscene.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* BossIntroRoarSFX;
+	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")
 	void StartApproachVillage();
