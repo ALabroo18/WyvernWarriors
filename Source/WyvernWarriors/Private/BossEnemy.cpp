@@ -482,6 +482,9 @@ void ABossEnemy::TelegraphLightningStrikes()
 {
 	TArray<FVector> LightningStrikeLocations = GenerateLightningStrikeLocations(); // Get strike locations
 
+	USoundBase* RandomBossRoarSFX = BossRoarSFX[FMath::RandRange(0, BossRoarSFX.Num() - 1)];
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), RandomBossRoarSFX, GetActorLocation(), BossRoarSFXVolume);
+	
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
 		// Spawn lightning effect at strike location
@@ -571,6 +574,7 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 		}
 		
 		LightningStrike->Activate(true);
+		UGameplayStatics::PlaySound2D(GetWorld(), LightningStrikeSFX, LightningStrikeSFXVolume, 1.f, 0.f, LightningStrikeSFXConcurrency);
 	}
 }
 

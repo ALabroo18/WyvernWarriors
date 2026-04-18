@@ -6,6 +6,7 @@
 #include "Components/SphereComponent.h"
 #include "GameManagers/GameModeLevel.h"
 #include "GameManagers/Components/EventBusComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 
 /* Sets up physics and detection collision components, static meshes for cannon top and bottoms, and UI widget
@@ -91,8 +92,22 @@ void ACannon::LoadCannon(ACannonball* CannonballToLoad)
 	bReadyToFire = true;
 }
 
+/* Plays fuse sound effect and set timer to fire cannonball after sound effect duration.
+ */
+void ACannon::LightCannonFuse()
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFuseSFX, GetActorLocation());
+	
+	GetWorldTimerManager().SetTimer(
+		CannonFireHandle,
+		this,
+		&ACannon::FireCannonball,
+		CannonFuseSFX->GetDuration(),
+		false);
+}
+
 /* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
- * cannon as not ready to fire after firing.
+ * cannon as not ready to fire after firing. Plays cannon fired sound effect.
  */
 void ACannon::FireCannonball()
 {
@@ -102,6 +117,7 @@ void ACannon::FireCannonball()
 	
 	BossEnemy->ClearDestroyVillageTimer();
 	Cannonball->SetAsFired(SetFiringRotation());
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFiredSFX, GetActorLocation());
 	SetUnloadable();
 }
 
