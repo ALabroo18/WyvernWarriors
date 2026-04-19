@@ -29,6 +29,10 @@ public:
 	// Get whether the cannon is ready to fire
 	bool GetFirable() const { return bCanBeLoaded; } 
 	
+	// Lights the cannon fuse to fire after a delay,
+	UFUNCTION(BlueprintCallable, Category = "Cannon")
+	void LightCannonFuse();
+	
 	// Fires the cannonball at the boss
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
 	void FireCannonball();
@@ -85,6 +89,26 @@ private:
 	// Widget that shows a cannon ready to fire
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Components", meta = (AllowPrivateAccess="true"))
 	UWidgetComponent* ReadyToFireWidget;
+	
+	// Sound effect for the fuse before cannon fires.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* CannonFuseSFX;
+	
+	// Volume for sound effect for the fuse before cannon fires.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float CannonFuseSFXVolume = 1.f;
+	
+	// Sound effect for the fuse before cannon fires.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* CannonFiredSFX;
+	
+	// Volume for sound effect for the fuse before cannon fires.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float CannonFiredSFXVolume = 1.f;
+	
+	// Handle for timer that fires the cannonball after lighting the fuse.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	FTimerHandle CannonFireHandle;
 	
 	// Handle for timer that updates fire widget opacity.
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Firing", meta = (AllowPrivateAccess="true"))
