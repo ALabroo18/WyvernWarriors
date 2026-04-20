@@ -13,7 +13,6 @@
 #include "EnemyPatrolRoute.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
-#include "Android/AndroidInputInterface.h"
 
 class AEnemyPatrolRoute;
 
