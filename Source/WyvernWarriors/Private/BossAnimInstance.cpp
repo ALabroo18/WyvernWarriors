@@ -30,18 +30,16 @@ void UBossAnimInstance::StopDazedAnimation()
  */
 void UBossAnimInstance::ChangeDazedBlend(float const Target)
 {
-	DazedBlendAlpha = UKismetMathLibrary::FInterpTo(
+	DazedBlendAlpha = UKismetMathLibrary::FInterpTo_Constant(
 		DazedBlendAlpha, 
 		Target, 
 		GetWorld()->GetDeltaSeconds(), 
 		DazedBlendInterpSpeed
 	);
-
-	UE_LOG(LogTemp, Log, TEXT("Dazed blend alpha: %f"), DazedBlendAlpha);
 	
-	if (FMath::IsNearlyEqual(DazedBlendAlpha, Target, .01f))
+	if (DazedBlendAlpha == Target)
 	{
 		DazedBlendAlpha = Target;
-		DazedBlendTimerHandle.Invalidate();
+		GetWorld()->GetTimerManager().ClearTimer(DazedBlendTimerHandle);
 	}
 }
