@@ -110,8 +110,6 @@ AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 // Executes the attack on the player by spawning a projectile
 void AGruntEnemy::AttackPlayer()
 {
-	
-	return;
 	// Exit if player character is not valid
 	if (!IsValid(PlayerCharacter))
 	{
