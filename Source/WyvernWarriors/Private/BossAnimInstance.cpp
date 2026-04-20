@@ -36,9 +36,6 @@ void UBossAnimInstance::ChangeDazedBlend(float const Target)
 		GetWorld()->GetDeltaSeconds(), 
 		DazedBlendInterpSpeed
 	);
-
-	UE_LOG(LogTemp, Log, TEXT("target blend alpha: %f"), Target);
-	UE_LOG(LogTemp, Log, TEXT("dazed blend alpha: %f"), DazedBlendAlpha);
 	
 	if (DazedBlendAlpha == Target)
 	{

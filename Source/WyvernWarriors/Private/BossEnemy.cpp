@@ -385,7 +385,7 @@ void ABossEnemy::GetVillageLocation()
 			CollisionParams
 		);
 		
-		if (!Hit.bBlockingHit) { break; }
+		if (!Hit.bBlockingHit) { return; }
 		UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."));
 	}
 	
@@ -559,10 +559,8 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			
 			for (const FHitResult& HitResult : HitResults)
 			{
-				UE_LOG(LogTemp, Log, TEXT("Lightning hit actor: %s"), *HitResult.GetActor()->GetName());
 				if (HitResult.GetActor() == PlayerCharacter)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Player was hit by lightning."));
 					UGameplayStatics::ApplyDamage(
 						PlayerCharacter,
 						LightningStrikeDamage,
