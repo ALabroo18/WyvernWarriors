@@ -33,6 +33,15 @@ ACannon::ACannon()
 	ReadyToFireWidget->SetVisibility(false);
 }
 
+/* Gets event bus when starting level.
+ */
+void ACannon::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
+}
+
 /* Calls method that cannon can be loaded
  */
 void ACannon::OnCannonOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -71,7 +80,6 @@ void ACannon::SetCanLoadCannon(bool const bSetCanLoad, AActor *CannonballToLoad)
 		return;
 	}
 	
-	const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
 	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad, this);
 }
 
@@ -87,9 +95,10 @@ void ACannon::LoadCannon(ACannonball* CannonballToLoad)
 	Cannonball->SetActiveness(false);
 	
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	SetCanLoadCannon(false, CannonballToLoad);
 	bCanBeLoaded = false;
 	bReadyToFire = true;
+	SetCanLoadCannon(false, CannonballToLoad);
+	EventBus->OnCannonLoaded.Broadcast();
 }
 
 /* Rotates the cannon to face at where the boss will be and stops village destruction. Sets the cannon as not ready to 

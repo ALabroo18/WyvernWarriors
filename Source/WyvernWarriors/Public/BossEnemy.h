@@ -17,11 +17,12 @@ class UBossAnimInstance;
 UENUM(BlueprintType)
 enum class EBossState : uint8
 {
+	Entering UMETA(DisplayName = "Entering"),
 	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
 	ApproachVillage UMETA(DisplayName = "Approaching Village"),
 	Hovering UMETA(DisplayName = "Hovering over Villages"),
 	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route"),
-	Defeated UMETA(DisplayName = "Defeated")
+	Defeated UMETA(DisplayName = "Defeated"),
 };
 
 UCLASS()
@@ -101,7 +102,7 @@ private:
 	
 	// Current state boss is in
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	EBossState CurrentState = EBossState::OnPatrolRoute;
+	EBossState CurrentState = EBossState::Entering;
 	
 	// Switches boss to hovering state.
 	UFUNCTION(Category = "Behavior")
@@ -123,9 +124,29 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	TSubclassOf<UUserWidget> FinalBlowQTE;
 	
-	// Direction boss retreats in when defeated.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	FVector RetreatDirection = FVector::ZeroVector;
+	// Camera for boss intro and roar.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	ACameraActor* BossEnterCamera;
+	
+	// Camera for boss exit and final blow.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	ACameraActor* BossExitCamera;
+	
+	// Distance of the boss from the cameras for cutscenes.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	float BossCameraDistance = 20000.f;
+	
+	// Direction the boss moves in a cutscene.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector CutsceneMovementDirection = FVector::ZeroVector;
+	
+	// Location of boss for intro and final blow.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector BossIntroFinalBlowLocation = FVector::ZeroVector;
+	
+	//
+	UFUNCTION(Category = "Custscenes")
+	void MoveIntoIntroCutscene(float DeltaTime);
 	
 	// Animation instance of boss.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))

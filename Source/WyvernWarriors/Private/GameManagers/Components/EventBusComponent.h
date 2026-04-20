@@ -18,6 +18,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBossStateChange, EBossState, Boss
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, bool, bIsForceFieldActive); // Delegate for force field state change
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVillageDestroyed, FName, VillageDestroyedTag); // Delegate for when boss destroys village.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFinalBlowQTE, bool, bInFinalBlow); // Delegate for when boss destroys village.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCannonLoaded); // Delegate for when cannon is loaded.
+
 
 
 
@@ -42,6 +44,10 @@ public:
 	// Delegate for when a cannon can be loaded or not.
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannon")
 	FCannonCanBeLoaded CannonCanBeLoaded;
+	
+	// Delegate for when a cannon can be loaded or not.
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannon")
+	FOnCannonLoaded OnCannonLoaded;
 	
 	// Delegate for when cutscene happens.
 	UPROPERTY(BlueprintAssignable, Category = "Cinematics")

@@ -39,15 +39,11 @@ void UCannonManagerComponent::EnableCannonsAndCannonballs(EBossState const NewBo
 	}
 }
 
-/* Sets cannonballs ungrabbable when force field is inactive.
- * @param bIsForceFieldActive - Whether the boss's force field is active or not.
+/* Sets cannonballs ungrabbable when cannon is loaded.
  */
-void UCannonManagerComponent::OnForceFieldChange(bool const bIsForceFieldActive)
+void UCannonManagerComponent::OnCannonLoaded()
 {
-	if (!bIsForceFieldActive)
-	{
-		SetCannonballsUngrabbable();
-	}
+	SetCannonballsUngrabbable();
 }
 
 /* Disables actives cannon and sets cannonballs ungrabbable when force field is inactive.
@@ -69,7 +65,7 @@ void UCannonManagerComponent::OnNewWave(bool const bIsFinalWave)
 	{
 		UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetOwner())->GetEventBusComponent();
 		EventBus->OnBossStateChange.AddDynamic(this, &UCannonManagerComponent::EnableCannonsAndCannonballs);
-		EventBus->OnForceFieldChange.AddDynamic(this, &UCannonManagerComponent::OnForceFieldChange);
+		EventBus->OnCannonLoaded.AddDynamic(this, &UCannonManagerComponent::OnCannonLoaded);
 		EventBus->OnVillageDestroyed.AddDynamic(this, &UCannonManagerComponent::OnVillageDestroyed);
 		
 		const UEnemyManagerComponent* EnemyManager = Cast<AGameModeLevel>(GetOwner())->GetEnemyManagementComponent();
@@ -160,6 +156,7 @@ void UCannonManagerComponent::SetCannonballsGrabbable()
 	{
 		Cannonball->SetPickUpSphereCollision(true);
 		Cannonball->ActivatePickUpUI();
+		UE_LOG(LogTemp, Log, TEXT("Setting %s cannonball active."), *Cannonball->GetName());
 	}
 }
 

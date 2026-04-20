@@ -38,9 +38,9 @@ private:
 	UFUNCTION(BlueprintCallable, Category = "Boss")
 	void EnableCannonsAndCannonballs(EBossState NewBossState);
 	
-	// Disables cannonball usage when force fields is deactivated.
+	// Disables cannonball usage when cannon is loaded.
 	UFUNCTION(Category = "Boss")
-	void OnForceFieldChange(bool bIsForceFieldActive);
+	void OnCannonLoaded();
 	
 	// Disables active cannon and cannonball usage when boss destroys village.
 	UFUNCTION(Category = "Boss")

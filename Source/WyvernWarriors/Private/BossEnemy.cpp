@@ -10,9 +10,9 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "GruntEnemy.h"
 #include "Blueprint/UserWidget.h"
-#include "EnemyPatrolRoute.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
+#include "Camera/CameraActor.h"
 
 class AEnemyPatrolRoute;
 
@@ -57,8 +57,32 @@ void ABossEnemy::BeginPlay()
 			WeaponDropOffs.Add(Cast<AWeaponDropOff>(Actor));
 		}
 	}
+	
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), TempActors);
+	for (AActor* Actor : TempActors)
+	{
+		if (IsValid(Actor))
+		{
+			if (Actor->ActorHasTag(FName("BossEnter")))
+			{
+				BossEnterCamera = Cast<ACameraActor>(Actor);
+			}
+			else if (Actor->ActorHasTag(FName("BossExit")))
+			{
+				BossExitCamera = Cast<ACameraActor>(Actor);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Boss camera is missing tag 'BossEnter' and/or 'BossExit'"));
+			}
+		}
+	}
 
-	SummonGruntEnemies();
+	FVector const BossSpawnLocation = BossEnterCamera->GetActorLocation() + (BossEnterCamera->GetActorForwardVector() * BossCameraDistance * 1.5f) + (BossEnterCamera->GetActorRightVector() * BossCameraDistance * -0.5f);
+	BossIntroFinalBlowLocation = BossEnterCamera->GetActorLocation() + (BossEnterCamera->GetActorForwardVector() * BossCameraDistance);
+	CutsceneMovementDirection = UKismetMathLibrary::GetDirectionUnitVector(BossSpawnLocation, BossIntroFinalBlowLocation);
+	SetActorLocation(BossSpawnLocation);
+	
 }
 
 /* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
@@ -71,21 +95,24 @@ void ABossEnemy::Tick(float const DeltaTime)
 	
 	switch (CurrentState)
 	{
-	case EBossState::OnPatrolRoute:
-		MoveAlongSpline(DeltaTime);
-		break;
-	case EBossState::ApproachVillage:
-		ApproachVillage(DeltaTime);
-		break;
-	case EBossState::ReturningToPatrolRoute:
-		ReturnToRoute(DeltaTime);
-		break;
-	case EBossState::Hovering:
-		RotateThenHover(DeltaTime);
-		break;
-	case EBossState::Defeated:
-		RotateAndMove(RetreatDirection, DeltaTime);
-		break;
+		case EBossState::Entering:
+			MoveIntoIntroCutscene(DeltaTime);
+			break;
+		case EBossState::OnPatrolRoute:
+			MoveAlongSpline(DeltaTime);
+			break;
+		case EBossState::ApproachVillage:
+			ApproachVillage(DeltaTime);
+			break;
+		case EBossState::ReturningToPatrolRoute:
+			ReturnToRoute(DeltaTime);
+			break;
+		case EBossState::Hovering:
+			RotateThenHover(DeltaTime);
+			break;
+		case EBossState::Defeated:
+			RotateAndMove(CutsceneMovementDirection, DeltaTime);
+			break;
 	}
 }
 
@@ -178,26 +205,24 @@ void ABossEnemy::RestoreForceFieldNiagara()
 }
 
 /* Broadcast final blow as success. Enable actor tick and get retreat direction away from patrol route. Change state
- * to defeated and broadcast change.
+ * to defeated and broadcast change. Stop dazed animation.
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
 	EventBus->OnFinalBlowQTE.Broadcast(false);
+	BossAnimInstance->StopDazedAnimation();
 	SetActorTickEnabled(true);
-	RetreatDirection.X = GetActorLocation().X - PatrolRoute->GetActorLocation().X;
-	RetreatDirection.Y = GetActorLocation().Y - PatrolRoute->GetActorLocation().Y;
-	RetreatDirection.Z = PatrolRoute->GetActorLocation().Z;
-	RetreatDirection.Normalize();
 	CurrentState = EBossState::Defeated;
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
-/* Broadcast final blow as a fail. Set health to 10% of max and restore force field.
+/* Broadcast final blow as a fail. Set health to 10% of max and restore force field. Stop dazed animation.
  */
 void ABossEnemy::FinalBlowQTEFailure()
 {
 	EventBus->OnFinalBlowQTE.Broadcast(false);
 	CurrentHealth = MaxHealth/10;
+	BossAnimInstance->StopDazedAnimation();
 	RestoreForceField();
 }
 
@@ -219,7 +244,7 @@ void ABossEnemy::AttackPlayer()
 void ABossEnemy::DestroySelfEnemy()
 {
 	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
-	
+	// (X=169250.000000,Y=96130.000000,Z=41004.000000)
 	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
 	EventBus->OnFinalBlowQTE.Broadcast(true);
 	PlayFinalBlowQTE();
@@ -263,6 +288,17 @@ void ABossEnemy::DestroyVillage()
 	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
+}
+
+void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
+{
+	RotateAndMove(CutsceneMovementDirection, DeltaTime);
+	
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossIntroFinalBlowLocation) < FMath::Square(1000.f))
+	{
+		CurrentState = EBossState::ReturningToPatrolRoute;
+		return;
+	}
 }
 
 /* Clears the timer for the village destruction.

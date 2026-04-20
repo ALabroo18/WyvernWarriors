@@ -26,8 +26,11 @@ public:
 	UFUNCTION(Category = "Cannon")
 	void SetUnloadable();
 	
+	// Get whether the cannon is loaded or not
+	bool GetLoadable() const { return bCanBeLoaded; } 
+	
 	// Get whether the cannon is ready to fire
-	bool GetFirable() const { return bCanBeLoaded; } 
+	bool GetFireable() const { return bReadyToFire; } 
 	
 	// Lights the cannon fuse to fire after a delay,
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
@@ -53,6 +56,13 @@ protected:
 private:
 	// Sets default values for this actor's properties and binds delegates
 	ACannon();
+	
+	// Sets initial values when play starts.
+	virtual void BeginPlay() override;
+	
+	// Event bus used for events
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess="true"))
+	UEventBusComponent* EventBus;
 	
 	// Function for when the cannonball enters the cannon's loading range
 	UFUNCTION(BlueprintCallable, Category = "Loading")
