@@ -111,9 +111,9 @@ private:
 	UFUNCTION(Category = "Behavior")
 	void DestroyVillage();
 	
-	// Handle for destroy village timer.
+	// Handle for village related timers.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	FTimerHandle DestroyVillageHandle;
+	FTimerHandle VillageTimerHandle;
 	
 	// Time for destroy village timer,
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))

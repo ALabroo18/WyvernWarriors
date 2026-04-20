@@ -92,33 +92,34 @@ void ACannon::LoadCannon(ACannonball* CannonballToLoad)
 	bReadyToFire = true;
 }
 
-/* Plays fuse sound effect and set timer to fire cannonball after sound effect duration.
+/* Rotates the cannon to face at where the boss will be and stops village destruction. Sets the cannon as not ready to 
+ * fire. Plays fuse sound effect and set timer to fire cannonball after sound effect duration.
  */
 void ACannon::LightCannonFuse()
-{
-	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFuseSFX, GetActorLocation());
-	
-	GetWorldTimerManager().SetTimer(
-		CannonFireHandle,
-		this,
-		&ACannon::FireCannonball,
-		CannonFuseSFX->GetDuration(),
-		false);
-}
-
-/* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
- * cannon as not ready to fire after firing. Plays cannon fired sound effect.
- */
-void ACannon::FireCannonball()
 {
 	if (!bReadyToFire) { return; }
 	if (!IsValid(BossEnemy)) { return; }
 	if (!IsValid(Cannonball)) { return; }
 	
+	SetUnloadable();
 	BossEnemy->ClearDestroyVillageTimer();
+	FRotator FireRotation = SetFiringRotation();
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFuseSFX, GetActorLocation());
+	
+	GetWorldTimerManager().SetTimer(
+		CannonFireHandle,
+		FTimerDelegate::CreateUObject(this, &ACannon::FireCannonball, FireRotation),
+		CannonFuseSFX->GetDuration(),
+		false);
+}
+
+/* Rotates and fires the cannonball at the boss. Plays cannon fired sound effect.
+ * @param FireRotation - The rotation from the cannon location to face the boss.
+ */
+void ACannon::FireCannonball(FRotator const FireRotation)
+{
 	Cannonball->SetAsFired(SetFiringRotation());
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFiredSFX, GetActorLocation());
-	SetUnloadable();
 }
 
 /* Sets the cannon as able to be loaded. Sets ready to fire widget as visible and the collision of the cannon

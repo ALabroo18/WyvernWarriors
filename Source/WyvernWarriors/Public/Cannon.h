@@ -35,7 +35,7 @@ public:
 	
 	// Fires the cannonball at the boss
 	UFUNCTION(BlueprintCallable, Category = "Cannon")
-	void FireCannonball();
+	void FireCannonball(FRotator FireRotation);
 	
 	// Set's the boss enemy for the cannon
 	UFUNCTION(BlueprintCallable, Category = "Cannon")

@@ -13,6 +13,7 @@
 #include "EnemyPatrolRoute.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
+#include "Android/AndroidInputInterface.h"
 
 class AEnemyPatrolRoute;
 
@@ -237,7 +238,7 @@ void ABossEnemy::SwitchToHoveringState()
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
 	
 	GetWorldTimerManager().SetTimer(
-		DestroyVillageHandle,
+		VillageTimerHandle,
 		this,
 		&ABossEnemy::DestroyVillage,
 		TimeToDestroyVillage,
@@ -269,7 +270,7 @@ void ABossEnemy::DestroyVillage()
  */
 void ABossEnemy::ClearDestroyVillageTimer()
 {
-	GetWorldTimerManager().ClearTimer(DestroyVillageHandle);
+	GetWorldTimerManager().ClearTimer(VillageTimerHandle);
 }
 
 /* Gets percentage of destroy village timer that has elapsed.
@@ -277,7 +278,7 @@ void ABossEnemy::ClearDestroyVillageTimer()
  */
 float ABossEnemy::GetDestroyVillageTimerProgress() const
 {
-	return GetWorldTimerManager().GetTimerElapsed(DestroyVillageHandle) / TimeToDestroyVillage;
+	return GetWorldTimerManager().GetTimerElapsed(VillageTimerHandle) / TimeToDestroyVillage;
 }
 
 /* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
@@ -355,7 +356,7 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 }
 
 /* Sets the location above the village to hover at. Determines if location is feasible through line check before
- * setting.
+ * setting. If no possible locations, try again after a second.
  */
 void ABossEnemy::GetVillageLocation()
 {
@@ -370,7 +371,8 @@ void ABossEnemy::GetVillageLocation()
 	
 	while (true)
 	{
-		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)]; // Error here after playing level 1 after dying
+		if (ValidWeaponDropOffs.IsEmpty()) { break; }
+		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
 		ValidWeaponDropOffs.Remove(WeaponDropOff);
 		
 		VillageHoverLocation = WeaponDropOff->GetActorLocation() + BossLocationOffset;
@@ -387,6 +389,13 @@ void ABossEnemy::GetVillageLocation()
 		if (!Hit.bBlockingHit) { break; }
 		UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."));
 	}
+	
+	GetWorldTimerManager().SetTimer(
+		VillageTimerHandle,
+		this,
+		&ABossEnemy::GetVillageLocation,
+		1.f,
+		false);
 }
 
 /* Summons grunt enemies based on summon amount and makes them be only aggressive. Adds grunts to array to track.
