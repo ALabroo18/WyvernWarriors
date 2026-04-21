@@ -23,6 +23,7 @@ enum class EBossState : uint8
 	Hovering UMETA(DisplayName = "Hovering over Villages"),
 	ReturningToPatrolRoute UMETA(DisplayName = "Returning to Patrol Route"),
 	Defeated UMETA(DisplayName = "Defeated"),
+	FinalBlow UMETA(DisplayName = "Final Blow"),
 };
 
 UCLASS()
@@ -121,8 +122,16 @@ private:
 	float TimeToDestroyVillage = 30.f;
 	
 	// QTE for final boss strike.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Final Blow", meta = (AllowPrivateAccess = true))
 	TSubclassOf<UUserWidget> FinalBlowQTE;
+	
+	// Location of boss to move to for final blow.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Final Blow", meta = (AllowPrivateAccess = true))
+	FVector BossFinalBlowLocation = FVector::ZeroVector;
+	
+	// Changes boss state to move to patrol route.
+	UFUNCTION(Category = "Final Blow")
+	void MoveIntoFinalBlow(float DeltaTime);
 	
 	// Distance of the boss from the cameras for cutscenes.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
@@ -140,10 +149,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
 	FVector BossIntroLocation = FVector::ZeroVector;
 	
-	// Location of boss to move to for final blow.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
-	FVector BossFinalBlowLocation = FVector::ZeroVector;
-	
 	// Location of boss to move to when exiting.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
 	FVector BossExitLocation = FVector::ZeroVector;
@@ -159,6 +164,8 @@ private:
 	// Changes boss state to move to patrol route.
 	UFUNCTION(Category = "Custscenes")
 	void ExitIntroCutscene();
+	
+	
 	
 	// Animation instance of boss.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))

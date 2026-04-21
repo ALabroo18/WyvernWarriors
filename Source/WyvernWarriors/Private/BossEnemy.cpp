@@ -91,6 +91,9 @@ void ABossEnemy::Tick(float const DeltaTime)
 		case EBossState::Defeated:
 			RotateAndMove(CutsceneMovementDirection, DeltaTime);
 			break;
+		case EBossState::FinalBlow:
+			MoveIntoFinalBlow(DeltaTime);
+			break;
 	}
 }
 
@@ -182,25 +185,24 @@ void ABossEnemy::RestoreForceFieldNiagara()
 		);
 }
 
-/* Broadcast final blow as success. Enable actor tick and get retreat direction away from patrol route. Change state
- * to defeated and broadcast change. Stop dazed animation.
+/* Broadcast final blow as ended. Enable actor tick and get direction towards exit. Change state to defeated and
+ * broadcast change.
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
 	EventBus->OnFinalBlowQTE.Broadcast(false);
-	BossAnimInstance->StopDazedAnimation();
 	SetActorTickEnabled(true);
+	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 	CurrentState = EBossState::Defeated;
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
-/* Broadcast final blow as a fail. Set health to 10% of max and restore force field. Stop dazed animation.
+/* Broadcast final blow as ended. Set health to 10% of max and restore force field.
  */
 void ABossEnemy::FinalBlowQTEFailure()
 {
 	EventBus->OnFinalBlowQTE.Broadcast(false);
 	CurrentHealth = MaxHealth/10;
-	BossAnimInstance->StopDazedAnimation();
 	RestoreForceField();
 }
 
@@ -218,14 +220,21 @@ void ABossEnemy::AttackPlayer()
 	);
 }
 
-// Destroys self and completes the wave
+/* Check for final blow QTE. Set health to 1 and stops force field restore but set force field to prevent damage. Stop
+ * dazed animation, then get direction towards final blow location and change state for final blow. Enable ticking.
+ */
 void ABossEnemy::DestroySelfEnemy()
 {
 	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
-	// (X=169250.000000,Y=96130.000000,Z=41004.000000)
+	
+	CurrentHealth = 1.f;
+	bIsForceFieldActive = true; // Force field active to prevent additional damage.
 	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
-	EventBus->OnFinalBlowQTE.Broadcast(true);
-	PlayFinalBlowQTE();
+	
+	CutsceneMovementDirection = (BossFinalBlowLocation - GetActorLocation()).GetSafeNormal();
+	BossAnimInstance->StopDazedAnimation();
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::FinalBlow;
 }
 
 /* Changes state to hovering and gets rotation to look at village with 0 pitch. Starts timer to destroy village.
@@ -268,8 +277,24 @@ void ABossEnemy::DestroyVillage()
 	CurrentState = EBossState::ReturningToPatrolRoute;
 }
 
+/* Move boss towards final blow location. If close enough, stop ticking and play final blow QTE.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
+{
+	RotateAndMove(CutsceneMovementDirection, DeltaTime);
+	
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossFinalBlowLocation) < FMath::Square(6000.f))
+	{
+		SetActorTickEnabled(false);
+		EventBus->OnFinalBlowQTE.Broadcast(true);
+		PlayFinalBlowQTE();
+	}
+}
 
-/* Sets positions used in boss cutscenes. Gets movement for intro cutscene and set boss to spawn location.
+
+/* Sets positions used in boss cutscenes. Gets movement for intro cutscene and set boss to spawn location and rotation.
+ * Makes boss mesh visible.
  * @param Spawn - location for boss spawning.
  * @param Intro - location of boss during intro.
  * @param FinalBlow - location of the boss for the final blow.
@@ -284,6 +309,7 @@ void ABossEnemy::SetBossCutscenePositions(FVector const Spawn, FVector const Int
 	
 	CutsceneMovementDirection = (BossIntroLocation - BossSpawnLocation).GetSafeNormal();
 	SetActorLocation(BossSpawnLocation);
+	SetActorRotation(CutsceneMovementDirection.Rotation());
 	SkeletalMesh->SetVisibility(true);
 }
 
@@ -314,7 +340,7 @@ void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
 	}
 }
 
-/* Turn actor tick on and set state to return to patrol route.
+/* Turn actor tick on and set state to return to patrol route. Make force field visible and broadcast state.
  */
 void ABossEnemy::ExitIntroCutscene()
 {
@@ -419,7 +445,7 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 void ABossEnemy::GetVillageLocation()
 {
 	FHitResult Hit;
-	FCollisionShape const MySphere = FCollisionShape::MakeSphere(3000.f);
+	FCollisionShape const MySphere = FCollisionShape::MakeSphere(5000.f);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
 	CollisionParams.AddIgnoredActor(PlayerCharacter);
