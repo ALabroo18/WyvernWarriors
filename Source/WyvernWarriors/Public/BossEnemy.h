@@ -17,7 +17,7 @@ class UBossAnimInstance;
 UENUM(BlueprintType)
 enum class EBossState : uint8
 {
-	Entering UMETA(DisplayName = "Entering"),
+	Intro UMETA(DisplayName = "Intro Cutscene"),
 	OnPatrolRoute UMETA(DisplayName = "On Patrol Route"),
 	ApproachVillage UMETA(DisplayName = "Approaching Village"),
 	Hovering UMETA(DisplayName = "Hovering over Villages"),
@@ -102,7 +102,7 @@ private:
 	
 	// Current state boss is in
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	EBossState CurrentState = EBossState::Entering;
+	EBossState CurrentState = EBossState::Intro;
 	
 	// Switches boss to hovering state.
 	UFUNCTION(Category = "Behavior")
@@ -124,14 +124,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	TSubclassOf<UUserWidget> FinalBlowQTE;
 	
-	// Camera for boss intro and roar.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
-	ACameraActor* BossEnterCamera;
-	
-	// Camera for boss exit and final blow.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
-	ACameraActor* BossExitCamera;
-	
 	// Distance of the boss from the cameras for cutscenes.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
 	float BossCameraDistance = 20000.f;
@@ -140,13 +132,33 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
 	FVector CutsceneMovementDirection = FVector::ZeroVector;
 	
-	// Location of boss for intro and final blow.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Custscenes", meta = (AllowPrivateAccess = true))
-	FVector BossIntroFinalBlowLocation = FVector::ZeroVector;
+	// Location of boss to spawn in at the start of the cutscene.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector BossSpawnLocation = FVector::ZeroVector;
 	
-	//
+	// Location of boss to move to in intro cutscene.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector BossIntroLocation = FVector::ZeroVector;
+	
+	// Location of boss to move to for final blow.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector BossFinalBlowLocation = FVector::ZeroVector;
+	
+	// Location of boss to move to when exiting.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Custscenes", meta = (AllowPrivateAccess = true))
+	FVector BossExitLocation = FVector::ZeroVector;
+	
+	// Moves the boss from the spawn to intro location.
+	UFUNCTION(BlueprintCallable, Category = "Custscenes")
+	void SetBossCutscenePositions(FVector Spawn, FVector Intro, FVector FinalBlow, FVector Exit);
+	
+	// Moves the boss from the spawn to intro location.
 	UFUNCTION(Category = "Custscenes")
 	void MoveIntoIntroCutscene(float DeltaTime);
+	
+	// Changes boss state to move to patrol route.
+	UFUNCTION(Category = "Custscenes")
+	void ExitIntroCutscene();
 	
 	// Animation instance of boss.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
@@ -175,6 +187,10 @@ private:
 	// Sound effect for boss intro cutscene.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
 	USoundBase* BossIntroRoarSFX;
+	
+	// Volume of boss intro roar sound effect.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float BossIntoRoarSFXVolume = 1.f;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")

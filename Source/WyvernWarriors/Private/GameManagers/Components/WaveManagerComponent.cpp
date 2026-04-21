@@ -146,6 +146,8 @@ AOutpost* UWaveManagerComponent::GetRandomCapturedOutpost()
 		}
 	}
 	
+	if (CapturedOutposts.IsEmpty()) { return nullptr; }
+	
 	return CapturedOutposts[FMath::RandRange(0, CapturedOutposts.Num() - 1)]; 
 }
 

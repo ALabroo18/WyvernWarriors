@@ -50,7 +50,7 @@ public:
 	FOnCannonLoaded OnCannonLoaded;
 	
 	// Delegate for when cutscene happens.
-	UPROPERTY(BlueprintAssignable, Category = "Cinematics")
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cinematics")
 	FCutsceneEvent CutsceneEvent;
 	
 	// Delegate for when grunt enemy dies.

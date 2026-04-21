@@ -12,7 +12,6 @@
 #include "Blueprint/UserWidget.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
-#include "Camera/CameraActor.h"
 
 class AEnemyPatrolRoute;
 
@@ -38,6 +37,9 @@ void ABossEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	ForceField->SetVisibility(false);
+	SkeletalMesh->SetVisibility(false);
+	
 	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (!IsValid(GameModeLevel)) return;
 	EventBus = GameModeLevel->GetEventBusComponent();
@@ -58,31 +60,7 @@ void ABossEnemy::BeginPlay()
 		}
 	}
 	
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACameraActor::StaticClass(), TempActors);
-	for (AActor* Actor : TempActors)
-	{
-		if (IsValid(Actor))
-		{
-			if (Actor->ActorHasTag(FName("BossEnter")))
-			{
-				BossEnterCamera = Cast<ACameraActor>(Actor);
-			}
-			else if (Actor->ActorHasTag(FName("BossExit")))
-			{
-				BossExitCamera = Cast<ACameraActor>(Actor);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("Boss camera is missing tag 'BossEnter' and/or 'BossExit'"));
-			}
-		}
-	}
-
-	FVector const BossSpawnLocation = BossEnterCamera->GetActorLocation() + (BossEnterCamera->GetActorForwardVector() * BossCameraDistance * 1.5f) + (BossEnterCamera->GetActorRightVector() * BossCameraDistance * -0.5f);
-	BossIntroFinalBlowLocation = BossEnterCamera->GetActorLocation() + (BossEnterCamera->GetActorForwardVector() * BossCameraDistance);
-	CutsceneMovementDirection = UKismetMathLibrary::GetDirectionUnitVector(BossSpawnLocation, BossIntroFinalBlowLocation);
-	SetActorLocation(BossSpawnLocation);
-	
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
 /* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
@@ -95,7 +73,7 @@ void ABossEnemy::Tick(float const DeltaTime)
 	
 	switch (CurrentState)
 	{
-		case EBossState::Entering:
+		case EBossState::Intro:
 			MoveIntoIntroCutscene(DeltaTime);
 			break;
 		case EBossState::OnPatrolRoute:
@@ -290,15 +268,60 @@ void ABossEnemy::DestroyVillage()
 	CurrentState = EBossState::ReturningToPatrolRoute;
 }
 
+
+/* Sets positions used in boss cutscenes. Gets movement for intro cutscene and set boss to spawn location.
+ * @param Spawn - location for boss spawning.
+ * @param Intro - location of boss during intro.
+ * @param FinalBlow - location of the boss for the final blow.
+ * @param Exit - location boss moves to when exiting.
+ */
+void ABossEnemy::SetBossCutscenePositions(FVector const Spawn, FVector const Intro, FVector const FinalBlow, FVector const Exit)
+{
+	BossSpawnLocation = Spawn;
+	BossIntroLocation = Intro;
+	BossFinalBlowLocation = FinalBlow;
+	BossExitLocation = Exit;
+	
+	CutsceneMovementDirection = (BossIntroLocation - BossSpawnLocation).GetSafeNormal();
+	SetActorLocation(BossSpawnLocation);
+	SkeletalMesh->SetVisibility(true);
+}
+
+/* Move boss towards the intro location. When close enough, stop boss tick and play intro roar. Set timer to exit intro
+ * cutscene.
+ * @param DeltaTime - float value representing time since last frame.
+ */
 void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
 {
 	RotateAndMove(CutsceneMovementDirection, DeltaTime);
 	
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossIntroFinalBlowLocation) < FMath::Square(1000.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossIntroLocation) < FMath::Square(6000.f))
 	{
-		CurrentState = EBossState::ReturningToPatrolRoute;
-		return;
+		SetActorTickEnabled(false);
+		UGameplayStatics::PlaySound2D(
+			GetWorld(),
+			BossIntroRoarSFX,
+			BossIntoRoarSFXVolume);
+		
+		GetWorldTimerManager().SetTimer(
+			VillageTimerHandle,
+			this,
+			&ABossEnemy::ExitIntroCutscene,
+			2,
+			false
+			);
+		
 	}
+}
+
+/* Turn actor tick on and set state to return to patrol route.
+ */
+void ABossEnemy::ExitIntroCutscene()
+{
+	ForceField->SetVisibility(true);
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
 /* Clears the timer for the village destruction.
@@ -616,7 +639,13 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 		}
 		
 		LightningStrike->Activate(true);
-		UGameplayStatics::PlaySound2D(GetWorld(), LightningStrikeSFX, LightningStrikeSFXVolume, 1.f, 0.f, LightningStrikeSFXConcurrency);
+		UGameplayStatics::PlaySound2D(
+			GetWorld(),
+			LightningStrikeSFX,
+			LightningStrikeSFXVolume, 
+			1.f, 
+			0.f,
+			LightningStrikeSFXConcurrency);
 	}
 }
 
