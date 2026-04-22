@@ -19,6 +19,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnForceFieldChange, bool, bIsForceF
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVillageDestroyed, FName, VillageDestroyedTag); // Delegate for when boss destroys village.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnFinalBlowQTE, bool, bInFinalBlow); // Delegate for when boss destroys village.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCannonLoaded); // Delegate for when cannon is loaded.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWyvernInFinalBlowRange, bool, bInRange); // Delegate for when wyvern in range for final blow.
 
 
 
@@ -61,7 +62,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Boss")
 	FOnBossStateChange OnBossStateChange;
 	
-	// Delegate for force field state change.
+	// Delegate for when boss destroys village.
 	UPROPERTY(BlueprintAssignable, Category = "Force Field")
 	FOnForceFieldChange OnForceFieldChange; 
 	
@@ -72,6 +73,10 @@ public:
 	// Delegate for when boss destroys village.
 	UPROPERTY(BlueprintAssignable, Category = "Boss")
 	FOnFinalBlowQTE OnFinalBlowQTE;
+	
+	// Delegate for when wyvern in range for final blow.
+	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Boss")
+	FWyvernInFinalBlowRange WyvernInFinalBlowRange;
 	
 private:	
 	// Sets default values for this component's properties

@@ -1,5 +1,6 @@
 #include "BehaviorTree/Services/BTService_CheckToFlee.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "GruntEnemy.h"
 
 // Sets default values for service
 UBTService_CheckToFlee::UBTService_CheckToFlee()
@@ -29,14 +30,18 @@ void UBTService_CheckToFlee::OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp,
 	// Resolve key ids and names
 	FleeingKey.ResolveSelectedKey(*BlackboardData);
 	DistanceToPlayerKey.ResolveSelectedKey(*BlackboardData);
+	SelfGruntKey.ResolveSelectedKey(*BlackboardData);
+	
+	GruntEnemy = Cast<AGruntEnemy>(BlackboardComponent->GetValueAsObject(SelfGruntKey.SelectedKeyName));
 }
 
-// Tick to check if enemy should flee from player
+/* If grunt is close enough to player, set flee offset then set enemy as fleeing.
+ */
 void UBTService_CheckToFlee::TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
 {
-	// Set enemy to flee if player is too close
 	if (OwnerComp.GetBlackboardComponent()->GetValueAsFloat(DistanceToPlayerKey.SelectedKeyName) < FleeingDistance * FleeingDistance)
 	{
+		GruntEnemy->SetFleeOffset();
 		OwnerComp.GetBlackboardComponent()->SetValueAsBool(FleeingKey.SelectedKeyName, true);
 	}
 }

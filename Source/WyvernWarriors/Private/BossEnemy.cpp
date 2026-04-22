@@ -277,7 +277,8 @@ void ABossEnemy::DestroyVillage()
 	CurrentState = EBossState::ReturningToPatrolRoute;
 }
 
-/* Move boss towards final blow location. If close enough, stop ticking and play final blow QTE.
+/* Move boss towards final blow location. If close enough, stop ticking and enable force field to stop damage. Set
+ * force field as query only and to overlap pawns.
  * @param DeltaTime - time since last frame.
  */
 void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
@@ -287,8 +288,9 @@ void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossFinalBlowLocation) < FMath::Square(6000.f))
 	{
 		SetActorTickEnabled(false);
-		EventBus->OnFinalBlowQTE.Broadcast(true);
-		PlayFinalBlowQTE();
+		bIsForceFieldActive = true;
+		ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 	}
 }
 
