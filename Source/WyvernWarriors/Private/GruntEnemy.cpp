@@ -191,7 +191,18 @@ void AGruntEnemy::ChasePlayerCharacter(float const DeltaTime)
 void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 {
 	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
+	DirectionFromPlayer.Y += RetreatDirectionOffset.X;
+	DirectionFromPlayer.Z += RetreatDirectionOffset.Y;
+	DirectionFromPlayer.Normalize();
 	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
+}
+
+/* Set the random offset for the flee direction.
+ */
+void AGruntEnemy::SetFleeOffset()
+{
+	RetreatDirectionOffset = FVector2D(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
+	RetreatDirectionOffset.Normalize();
 }
 
 /* Gets controller for this grunt and runs the aggressive behavior subtree on it.
