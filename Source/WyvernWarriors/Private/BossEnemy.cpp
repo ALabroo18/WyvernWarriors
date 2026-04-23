@@ -48,6 +48,7 @@ void ABossEnemy::BeginPlay()
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	EventBus->OnFinalBlowQTE.AddDynamic(this, &ABossEnemy::PlayFinalBlowQTE);
 	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
 	
 	TArray<AActor*> TempActors;
@@ -134,7 +135,7 @@ void ABossEnemy::DestroyForceFieldNiagara()
 		true
 	);
 	
-	BossAnimInstance->PlayDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(1.f);
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -174,7 +175,7 @@ void ABossEnemy::RestoreForceFieldNiagara()
 			true
 		);
 
-	BossAnimInstance->StopDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(0.f);
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -185,25 +186,23 @@ void ABossEnemy::RestoreForceFieldNiagara()
 		);
 }
 
-/* Broadcast final blow as ended. Enable actor tick and get direction towards exit. Change state to defeated and
- * broadcast change.
+/* Enable actor tick and get direction towards exit. Change state to defeated and broadcast change.
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
-	EventBus->OnFinalBlowQTE.Broadcast(false);
 	SetActorTickEnabled(true);
 	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 	CurrentState = EBossState::Defeated;
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
-/* Broadcast final blow as ended. Set health to 10% of max and restore force field.
+/* Set health to 10% of max and restore force field. Change state to return to route and broadcast change.
  */
 void ABossEnemy::FinalBlowQTEFailure()
 {
-	EventBus->OnFinalBlowQTE.Broadcast(false);
 	CurrentHealth = MaxHealth/10;
-	RestoreForceField();
+	RestoreForceFieldNiagara();
+	EventBus->OnFinalBlowFailure.Broadcast();
 }
 
 // Performs a lightning strike attack on the player
@@ -232,7 +231,7 @@ void ABossEnemy::DestroySelfEnemy()
 	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
 	
 	CutsceneMovementDirection = (BossFinalBlowLocation - GetActorLocation()).GetSafeNormal();
-	BossAnimInstance->StopDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(.5f);
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::FinalBlow;
 }

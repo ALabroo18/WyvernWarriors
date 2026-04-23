@@ -10,18 +10,14 @@ class UBossAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	
 public:
-	// Play dazed animation by changing dazed blend to 1.
+	// Changes dazed blend alpha to target.
 	UFUNCTION(Category = "Animation")
-	void PlayDazedAnimation();
-	
-	// Stop dazed animation by changing dazed blend to 0.
-	UFUNCTION(Category = "Animation")
-	void StopDazedAnimation();
+	void ChangeDazedBlend(float Target);
 
 private:
 	// Changes dazed blend alpha to target.
 	UFUNCTION(Category = "Animation")
-	void ChangeDazedBlend(float Target);
+	void ChangeDazedBlendBackend(float Target);
 	
 	// Alpha for the blend between default and dazed anims.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = true))

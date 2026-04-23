@@ -1,25 +1,14 @@
 #include "BossAnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 
-/* Play dazed animation by changing dazed blend to 1.
- */
-void UBossAnimInstance::PlayDazedAnimation()
-{
-	GetWorld()->GetTimerManager().SetTimer(
-		DazedBlendTimerHandle,
-		FTimerDelegate::CreateUObject(this, &UBossAnimInstance::ChangeDazedBlend, 1.f),
-		0.05f,
-		true
-	);
-}
 
-/* Stop dazed animation by changing dazed blend to 0.
+/* Change dazed blend alpha to target.
  */
-void UBossAnimInstance::StopDazedAnimation()
+void UBossAnimInstance::ChangeDazedBlend(float Target)
 {
 	GetWorld()->GetTimerManager().SetTimer(
 		DazedBlendTimerHandle,
-		FTimerDelegate::CreateUObject(this, &UBossAnimInstance::ChangeDazedBlend, 0.f),
+		FTimerDelegate::CreateUObject(this, &UBossAnimInstance::ChangeDazedBlendBackend, Target),
 		0.05f,
 		true
 	);
@@ -28,7 +17,7 @@ void UBossAnimInstance::StopDazedAnimation()
 /* Interp dazed blend alpha to target value, and stop dazed blend timer when nearly equal to target.
  * @param Target - float value that dazed blend alpha will become.
  */
-void UBossAnimInstance::ChangeDazedBlend(float const Target)
+void UBossAnimInstance::ChangeDazedBlendBackend(float const Target)
 {
 	DazedBlendAlpha = UKismetMathLibrary::FInterpTo_Constant(
 		DazedBlendAlpha, 
