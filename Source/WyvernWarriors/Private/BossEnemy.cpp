@@ -48,6 +48,7 @@ void ABossEnemy::BeginPlay()
 	CurrentHealth = MaxHealth;
 	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
 	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	EventBus->OnFinalBlowQTE.AddDynamic(this, &ABossEnemy::PlayFinalBlowQTE);
 	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
 	
 	TArray<AActor*> TempActors;
@@ -134,7 +135,7 @@ void ABossEnemy::DestroyForceFieldNiagara()
 		true
 	);
 	
-	BossAnimInstance->PlayDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(1.f);
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -174,7 +175,7 @@ void ABossEnemy::RestoreForceFieldNiagara()
 			true
 		);
 
-	BossAnimInstance->StopDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(0.f);
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -185,25 +186,25 @@ void ABossEnemy::RestoreForceFieldNiagara()
 		);
 }
 
-/* Broadcast final blow as ended. Enable actor tick and get direction towards exit. Change state to defeated and
- * broadcast change.
+/* Enable actor tick and get direction towards exit. Change state to defeated and broadcast change.
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
-	EventBus->OnFinalBlowQTE.Broadcast(false);
 	SetActorTickEnabled(true);
 	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 	CurrentState = EBossState::Defeated;
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
 }
 
-/* Broadcast final blow as ended. Set health to 10% of max and restore force field.
+/* Set health to 10% of max and restore force field. Change state to return to route and broadcast change.
  */
 void ABossEnemy::FinalBlowQTEFailure()
 {
-	EventBus->OnFinalBlowQTE.Broadcast(false);
 	CurrentHealth = MaxHealth/10;
-	RestoreForceField();
+	RestoreForceFieldNiagara();
+	ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+	CurrentState = EBossState::Hovering;
+	EventBus->OnFinalBlowFailure.Broadcast();
 }
 
 // Performs a lightning strike attack on the player
@@ -232,7 +233,7 @@ void ABossEnemy::DestroySelfEnemy()
 	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
 	
 	CutsceneMovementDirection = (BossFinalBlowLocation - GetActorLocation()).GetSafeNormal();
-	BossAnimInstance->StopDazedAnimation();
+	BossAnimInstance->ChangeDazedBlend(.5f);
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::FinalBlow;
 }
@@ -277,7 +278,8 @@ void ABossEnemy::DestroyVillage()
 	CurrentState = EBossState::ReturningToPatrolRoute;
 }
 
-/* Move boss towards final blow location. If close enough, stop ticking and play final blow QTE.
+/* Move boss towards final blow location. If close enough, stop ticking and enable force field to stop damage. Set
+ * force field as query only and to overlap pawns.
  * @param DeltaTime - time since last frame.
  */
 void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
@@ -287,8 +289,9 @@ void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossFinalBlowLocation) < FMath::Square(6000.f))
 	{
 		SetActorTickEnabled(false);
-		EventBus->OnFinalBlowQTE.Broadcast(true);
-		PlayFinalBlowQTE();
+		bIsForceFieldActive = true;
+		ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 	}
 }
 
@@ -401,7 +404,7 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
 	FVector DirectionToVillage = VillageHoverLocation - GetActorLocation();
 
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(1000.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(2000.f))
 	{
 		SwitchToHoveringState();
 		return;

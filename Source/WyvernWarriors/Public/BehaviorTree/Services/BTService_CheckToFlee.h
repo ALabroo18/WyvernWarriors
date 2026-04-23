@@ -32,4 +32,12 @@ protected:
 	// Blackboard key for the player wyvern
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector DistanceToPlayerKey;
+	
+	// Blackboard key for the controlled grunt.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
+	FBlackboardKeySelector SelfGruntKey;
+	
+	// Reference to grunt enemy self
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
+	AGruntEnemy* GruntEnemy;
 };
