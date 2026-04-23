@@ -402,7 +402,7 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 {
 	FVector DirectionToVillage = VillageHoverLocation - GetActorLocation();
 
-	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(1000.f))
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(2000.f))
 	{
 		SwitchToHoveringState();
 		return;
