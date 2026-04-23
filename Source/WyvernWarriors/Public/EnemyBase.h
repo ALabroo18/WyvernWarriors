@@ -57,6 +57,10 @@ public:
 	// Abstract method to destroy self
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	virtual void DestroySelfEnemy() {};
+	
+	// Get the bool for is grunt is active.
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	bool GetIsActive() const { return bIsActive; }
 
 protected:
 	// Rotates and moves the enemy with the specified rotation, away from actors if provided
@@ -114,4 +118,8 @@ protected:
 	// Current health of the enemy
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
 	float CurrentHealth = 1.f;
+	
+	// Whether the grunt is active in world or not
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsActive = true;
 };

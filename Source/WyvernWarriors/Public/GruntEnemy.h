@@ -117,10 +117,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Appearance", meta = (AllowPrivateAccess = true))
 	UMaterialInterface* HighlightMaterial;
 	
-	// Whether the grunt is active in world or not
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	bool bIsActive = false;
-	
 	// Directional offset while fleeing.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
 	FVector2D RetreatDirectionOffset = FVector2D::ZeroVector;
