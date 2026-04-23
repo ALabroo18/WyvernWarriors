@@ -54,8 +54,12 @@ public:
 	// Move towards player character while avoiding nearby enemies
 	void ChasePlayerCharacter(float const DeltaTime);
 	
-	// Flee from the character until far enough
+	// Flee from the character until far enough.
 	void FleePlayerCharacter(float const DeltaTime);
+	
+	// Set the random offset for the flee direction.
+	UFUNCTION(Category = "Movement")
+	void SetFleeOffset();
 	
 	// Make grunt only use aggressive behavior subtree
 	UFUNCTION(BlueprintCallable, Category = "Behavior")
@@ -116,4 +120,9 @@ private:
 	// Whether the grunt is active in world or not
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bIsActive = false;
+	
+	// Directional offset while fleeing.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
+	FVector2D RetreatDirectionOffset = FVector2D::ZeroVector;
+	
 };
