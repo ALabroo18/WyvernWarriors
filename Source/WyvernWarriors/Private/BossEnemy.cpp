@@ -202,6 +202,8 @@ void ABossEnemy::FinalBlowQTEFailure()
 {
 	CurrentHealth = MaxHealth/10;
 	RestoreForceFieldNiagara();
+	ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+	CurrentState = EBossState::Hovering;
 	EventBus->OnFinalBlowFailure.Broadcast();
 }
 
