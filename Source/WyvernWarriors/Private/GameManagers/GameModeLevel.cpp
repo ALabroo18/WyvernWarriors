@@ -32,9 +32,22 @@ void AGameModeLevel::BeginPlay()
 	CannonManager->SetupCannonManager();
 	EnemyManager->SetupEnemyManager();
 	WaveManager->SetupWaveManager();
-	WaveManager->NewWave();
 	
 	EventBus->OnBossStateChange.AddDynamic(this, &AGameModeLevel::OnBossDefeated);
+	GetWorldTimerManager().SetTimer(
+		LevelWinHandle,
+		this,
+		&AGameModeLevel::StartGane,
+		1,
+		false
+		);
+}
+
+/* Start the first wave.
+ */
+void AGameModeLevel::StartGane()
+{
+	WaveManager->NewWave();
 }
 
 /* 

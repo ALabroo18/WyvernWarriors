@@ -52,6 +52,10 @@ private:
 	// Set references and variables
 	virtual void BeginPlay() override;
 	
+	// Starts the first wave.
+	UFUNCTION(Category = "Game State")
+	void StartGane();
+	
 	// Reference to the level's game state
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Game State", meta = (AllowPrivateAccess = true))
 	AGameStateLevel* GameStateLevel;

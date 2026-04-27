@@ -100,7 +100,7 @@ void UWaveManagerComponent::RecaptureOutposts()
 		{
 			if (IsValid(Outpost))
 			{
-				Outpost->NewWave(bIsFinalWave); // Recapture player-controlled outposts
+				Outpost->NewWave(false); // Recapture player-controlled outposts
 			}
 		}
 		
@@ -126,7 +126,7 @@ void UWaveManagerComponent::RecaptureOutposts()
 
 		if (IsValid(OutpostToRecapture))
 		{
-			OutpostToRecapture->NewWave(bIsFinalWave); // Recapture selected outpost
+			OutpostToRecapture->NewWave(false); // Recapture selected outpost
 			PlayerControlledOutposts.RemoveAt(RandomIndex); // Remove from list to avoid duplicate recaptures
 		}
 	}
