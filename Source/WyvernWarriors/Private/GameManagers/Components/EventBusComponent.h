@@ -21,9 +21,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFinalBlowQTE); // Delegate for final blow.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFinalBlowFailure); // Delegate for final blow failure.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCannonLoaded); // Delegate for when cannon is loaded.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWyvernInFinalBlowRange, bool, bInRange); // Delegate for when wyvern in range for final blow.
-
-
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStartLevel); // Delegate for when the level starts.
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class UEventBusComponent : public UActorComponent
@@ -31,6 +29,10 @@ class UEventBusComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
+	// Delegate for when the level starts.
+	UPROPERTY(BlueprintAssignable, Category = "Level")
+	FStartLevel StartLevel;
+	
 	// Delegate for wyvern being able to pick up cannonball.
 	UPROPERTY(BlueprintCallable, BlueprintAssignable, Category = "Cannonball")
 	FWyvernCanPickUpCannonball WyvernCanPickUpCannonball;

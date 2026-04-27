@@ -34,23 +34,17 @@ void AGameModeLevel::BeginPlay()
 	WaveManager->SetupWaveManager();
 	
 	EventBus->OnBossStateChange.AddDynamic(this, &AGameModeLevel::OnBossDefeated);
-	GetWorldTimerManager().SetTimer(
-		LevelWinHandle,
-		this,
-		&AGameModeLevel::StartGane,
-		1,
-		false
-		);
 }
 
-/* Start the first wave.
+/* Start the level and the first wave.
  */
-void AGameModeLevel::StartGane()
+void AGameModeLevel::StartLevel() const
 {
 	WaveManager->NewWave();
+	EventBus->StartLevel.Broadcast();
 }
 
-/* 
+/* Wins the level after the boss is defeated and the timer runs out.
  */
 void AGameModeLevel::OnBossDefeated(EBossState const NewState)
 {
