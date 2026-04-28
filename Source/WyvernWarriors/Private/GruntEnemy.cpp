@@ -79,7 +79,6 @@ AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 	
 	if (bToggleActive)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Enabling %s grunt"), *this->GetName());
 		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
@@ -88,7 +87,6 @@ AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 		return nullptr;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Disabling %s grunt"), *this->GetName());
 	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -97,11 +95,8 @@ AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 	FloatingPawnMovement->StopMovementImmediately();
 	
 	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
-	if (!IsValid(GruntEnemyController))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
-		return nullptr;
-	}
+	if (!IsValid(GruntEnemyController)) { return nullptr; }
+	
 	GruntEnemyController->UnPossess();
 	return GruntEnemyController;
 
@@ -210,10 +205,7 @@ void AGruntEnemy::SetFleeOffset()
 void AGruntEnemy::UseAggressiveTreeOnly() const
 {
 	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
-	if (!IsValid(GruntEnemyController))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Grunt controller for %s is invalid on "), *this->GetName());
-		return;
-	}
+	if (!IsValid(GruntEnemyController)) { return; }
+	
 	GruntEnemyController->RunAggressiveTree();
 }
