@@ -511,9 +511,8 @@ void ABossEnemy::SummonGruntEnemies()
 			GruntSpawnTransform,
 			RouteDistance,
 			PatrolRoute,
-			false,
-			false
-			);
+			false);
+		
 		if (IsValid(SummonedGrunt))
 		{
 			UE_LOG(LogTemp, Log, TEXT("Summoned grunt enemy for boss: %s"), *SummonedGrunt->GetName())

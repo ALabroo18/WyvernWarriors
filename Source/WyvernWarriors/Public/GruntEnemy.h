@@ -36,10 +36,6 @@ public:
 	// Executes the attack on the player
 	virtual void AttackPlayer() override;
 	
-	// Makes the grunt only move along the spline
-	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Movement")
-	void MoveAlongSplineOnly();
-	
 	// Orients the health bar to face the player when within a certain distance
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	void TurnHealthBarTowardsPlayer() const;
@@ -101,10 +97,6 @@ private:
 	// Whether the enemy has seen the player
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bSeenPlayer = false;
-	
-	// Whether the enemy is an egg thief
-	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
-	bool bIsEggThief = false;
 	
 	// Modifies direction if there is possible collisions during movement.
 	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const override;

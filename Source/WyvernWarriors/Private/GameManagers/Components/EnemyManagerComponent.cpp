@@ -136,9 +136,9 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  * @param Route - patrol route enemy is assigned to on spawn
  * @param bSpawnOnRoute - bool for if grunt spawns on route or not
  */
-AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute, bool const bIgnoreSpawnCap)
+AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
-	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity && !bIgnoreSpawnCap)
+	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Too many active grunts, unable to spawn grunts for outpost."));
 		return nullptr;
@@ -162,17 +162,8 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 		UE_LOG(LogTemp, Warning, TEXT("No grunt enemies in inactive queue to spawn"));
 		return nullptr;
 	}
-	
-	if (bIgnoreSpawnCap)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Spawning new grunt that ignores spawn cap."));
-		NewGruntEnemy = GetWorld()->SpawnActorDeferred<AGruntEnemy>(GruntEnemyToSpawn, SpawnTransform);
-		NewGruntEnemy->FinishSpawning(SpawnTransform);
-	}
-	else
-	{
-		NewGruntEnemy->SetActorTransform(SpawnTransform);
-	}
+
+	NewGruntEnemy->SetActorTransform(SpawnTransform);
 
 	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyRouteEnemyCount(true);
@@ -282,8 +273,7 @@ bool UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost)
 			SpawnTransform, 
 			RouteSpawnDistance, 
 			OutpostPatrolRoute,
-			true,
-			false);
+			true);
 		
 		if (!Outpost->GetGruntEnemies().Contains(NewGrunt))
 		{
