@@ -148,7 +148,7 @@ void AEnemyBase::CheckForMovementCollision(FVector& Direction, const TArray<AAct
  */
 void AEnemyBase::ReturnToRoute(float const DeltaTime)
 {
-	if (!IsValid(SplineComponent)) { UE_LOG(LogTemp, Error, TEXT("Invalid spline component for enemy to return to route.")); return; }
+	if (!IsValid(SplineComponent)) { return; }
 	
 	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
 	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();

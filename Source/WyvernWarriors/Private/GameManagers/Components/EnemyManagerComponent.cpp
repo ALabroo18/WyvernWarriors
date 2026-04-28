@@ -31,18 +31,11 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 		}
 		else
 		{
-			if (EnemySpawnPoints.IsEmpty())
-			{
-				UE_LOG(LogTemp, Error, TEXT("No spawn points for enemy spawning."));
-				return FTransform::Identity;
-			}
+			if (EnemySpawnPoints.IsEmpty()) { return FTransform::Identity; }
 		
 			const AEnemySpawnPoint* SpawnPoint = EnemySpawnPoints[FMath::RandRange(0, EnemySpawnPoints.Num() - 1)]; // Select a random spawn point
-			if (!IsValid(SpawnPoint))
-			{
-				UE_LOG(LogTemp, Error, TEXT("Random enemy spawn point chosen is invalid."));
-				return FTransform::Identity;
-			}
+			if (!IsValid(SpawnPoint)) { return FTransform::Identity; }
+			
 			SpawnLocation = SpawnPoint->GetActorLocation(); // Get the location of the spawn point
 			SpawnRotation = FRotator(0.f, 0.f, 0.f); // Default rotation for the spawned enemy
 		}
@@ -50,7 +43,6 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 		FVector const PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation(); // Get the player's location'
 		if (float const DistanceToPlayer = FVector::Dist(SpawnLocation, PlayerLocation); DistanceToPlayer < MinimumPlayerSpawnDistance) 
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Player too close to spawn point for spawning: %f."), DistanceToPlayer);
 			SpawnAttempts++;
 		}
 		else
@@ -58,11 +50,7 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
 			bIsPlayerTooClose = false;
 		}
 		
-		if (SpawnAttempts >= 10)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Too many failed spawn attempts, failed to get spawn transform."));
-			return FTransform::Identity;
-		}
+		if (SpawnAttempts >= 10) { return FTransform::Identity; }
 	}
 	
 	TArray<AActor*> NearbyEnemies;
@@ -94,36 +82,20 @@ FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* Spe
  */
 AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
 {
-	if (EnemyPatrolRoutes.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("No patrol route to get for spawning."));
-		return nullptr;
-	}
+	if (EnemyPatrolRoutes.IsEmpty()) { return nullptr; }
 	
 	TArray<AEnemyPatrolRoute*> OpenPatrolRoutes;
 	for (AEnemyPatrolRoute* Route : EnemyPatrolRoutes)
 	{
 		if (IsValid(Route))
 		{
-			if (Route->GetRouteFull())
-			{
-				UE_LOG(LogTemp, Warning, TEXT("%s is full, skipping for spawning."), *Route->GetName());
-				continue;
-			}
+			if (Route->GetRouteFull()) { continue; }
 
 			OpenPatrolRoutes.Add(Route);
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("Patrol route is invalid, skipping for spawning."));
-		}
 	}
 	
-	if (OpenPatrolRoutes.IsEmpty())
-	{
-		UE_LOG(LogTemp, Error, TEXT("There are no open patrol route to spawn at."));
-		return nullptr;
-	}
+	if (OpenPatrolRoutes.IsEmpty()) { return nullptr; }
 
 	return OpenPatrolRoutes[FMath::RandRange(0, OpenPatrolRoutes.Num() - 1)];
 }
@@ -138,48 +110,25 @@ AEnemyPatrolRoute* UEnemyManagerComponent::GetSpawnPatrolRoute()
  */
 AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTransform, float const DistanceAlongSpline, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
-	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity)
-	{
-		UE_LOG(LogTemp, Error, TEXT("Too many active grunts, unable to spawn grunts for outpost."));
-		return nullptr;
-	}
-	
-	if (!IsValid(Route))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid route for grunt enemy spawning."));
-		return nullptr;
-	}
-	
-	if (SpawnTransform.Equals(FTransform::Identity))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Invalid spawn transform grunt enemy spawning."));
-		return nullptr;
-	}
+	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity) { return nullptr; }
+	if (!IsValid(Route)) { return nullptr; }
+	if (SpawnTransform.Equals(FTransform::Identity)) { return nullptr; }
 
 	AGruntEnemy* NewGruntEnemy;
-	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No grunt enemies in inactive queue to spawn"));
-		return nullptr;
-	}
+	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy)) { return nullptr; }
 
-	NewGruntEnemy->SetActorTransform(SpawnTransform);
-
+	
 	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyRouteEnemyCount(true);
-
+	NewGruntEnemy->SetActorTransform(SpawnTransform);
 	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute);
 	NewGruntEnemy->ToggleGruntEnemy(true);
 
 	AGruntEnemyController* NewGruntEnemyController;
 	InactiveGruntEnemyControllers.Dequeue(NewGruntEnemyController);
-	if (!IsValid(NewGruntEnemyController))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Grunt enemy controller from inactive queue is invalid."));
-		return nullptr;
-	}
+	if (!IsValid(NewGruntEnemyController)) { return nullptr; }
+	
 	NewGruntEnemyController->Possess(NewGruntEnemy);
-
 	return NewGruntEnemy;
 }
 
@@ -238,11 +187,7 @@ bool UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost)
 {
 	
 	AEnemyPatrolRoute* OutpostPatrolRoute = Outpost->GetOutpostPatrolRoute();
-	if (!IsValid(OutpostPatrolRoute))
-	{
-		UE_LOG(LogTemp, Error, TEXT("%s patrol route is invalid or full."), *Outpost->GetName());
-		return false;
-	}
+	if (!IsValid(OutpostPatrolRoute)) { return false; }
 	
 	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute() - OutpostPatrolRoute->GetNumEnemiesOnRoute();
 	int32 SpawnAmount = FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
@@ -264,7 +209,6 @@ bool UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost)
 		
 		if (SpawnTransform.Equals(FTransform::Identity))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Spawn transform is default, trying to spawn another grunt for %s.: Attempt: %d"), *Outpost->GetName(), SpawnAttempts);
 			SpawnAttempts++;
 			continue;
 		}

@@ -12,6 +12,7 @@
 #include "Blueprint/UserWidget.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
+#include "KismetTraceUtils.h"
 
 class AEnemyPatrolRoute;
 
@@ -106,7 +107,6 @@ void ABossEnemy::DestroyForceField()
 	bIsForceFieldActive = false;
 	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ForceField->SetVisibility(false);
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Destroyed"));
 	EventBus->OnForceFieldChange.Broadcast(false); 
 	
 	GetWorldTimerManager().SetTimer(
@@ -158,7 +158,6 @@ void ABossEnemy::RestoreForceField()
 	
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
-	UE_LOG(LogTemp, Log, TEXT("Boss Force Field Restored"));
 }
 
 /* Plays force field restored niagara effect and stops dazed animation. Set timer to finish restoring force field.
@@ -226,7 +225,7 @@ void ABossEnemy::AttackPlayer()
  */
 void ABossEnemy::DestroySelfEnemy()
 {
-	if (!IsValid(FinalBlowQTE)) { UE_LOG(LogTemp, Log, TEXT("Boss does not have a final blow QTE assigned.")) return; }
+	if (!IsValid(FinalBlowQTE)) { return; }
 	
 	CurrentHealth = 1.f;
 	bIsForceFieldActive = true; // Force field active to prevent additional damage.
@@ -242,7 +241,6 @@ void ABossEnemy::DestroySelfEnemy()
  */
 void ABossEnemy::SwitchToHoveringState()
 {
-	UE_LOG(LogTemp, Log, TEXT("Switching to hovering state."));
 	RotationTowardsVillage = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), VillageHoverLocation - BossLocationOffset);
 	RotationTowardsVillage = FRotator(0.f, RotationTowardsVillage.Yaw, RotationTowardsVillage.Roll);
 	
@@ -264,7 +262,6 @@ void ABossEnemy::DestroyVillage()
 {
 	FName const DestroyedTag = WeaponDropOff->Tags.Last();
 	EventBus->OnVillageDestroyed.Broadcast(DestroyedTag);
-	UE_LOG(LogTemp, Log, TEXT("Boss has destroyed village with tag: %s"), *DestroyedTag.ToString());
 	WeaponDropOffs.Remove(WeaponDropOff);
 	if (WeaponDropOffs.IsEmpty())
 	{
@@ -422,7 +419,6 @@ void ABossEnemy::RotateThenHover(float const DeltaTime)
 	SetActorRotation(FMath::RInterpTo(GetActorRotation(), RotationTowardsVillage, DeltaTime, .5f));
 	if (GetActorRotation().Equals(RotationTowardsVillage, .5f))
 	{
-		UE_LOG(LogTemp, Log, TEXT("Done Rotating, now hovering"));
 		SetActorTickEnabled(false);
 	}
 }
@@ -436,7 +432,6 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 
 	if (bOnRoute)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Boss returned to route, switching to on patrol route state."));
 		CurrentState = EBossState::OnPatrolRoute;
 		SummonGruntEnemies();
 	}
@@ -454,7 +449,7 @@ void ABossEnemy::GetVillageLocation()
 	CollisionParams.AddIgnoredActor(PlayerCharacter);
 	
 	TArray<AWeaponDropOff*> ValidWeaponDropOffs = WeaponDropOffs;
-	if (ValidWeaponDropOffs.IsEmpty()) { UE_LOG(LogTemp, Warning, TEXT("There are no weapon drop-offs in the level for the boss to hover over.")); return; }
+	if (ValidWeaponDropOffs.IsEmpty()) { return; }
 	
 	while (true)
 	{
@@ -474,7 +469,6 @@ void ABossEnemy::GetVillageLocation()
 		);
 		
 		if (!Hit.bBlockingHit) { return; }
-		UE_LOG(LogTemp, Warning, TEXT("Something in way of village, getting new one."));
 	}
 	
 	GetWorldTimerManager().SetTimer(
@@ -490,18 +484,10 @@ void ABossEnemy::GetVillageLocation()
 void ABossEnemy::SummonGruntEnemies()
 {
 	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameModeLevel))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Incorrect game mode set for level to use boss."))
-		return;
-	}
+	if (!IsValid(GameModeLevel)) { return; }
 	
 	UEnemyManagerComponent* EnemyManagerComponent = GameModeLevel->GetEnemyManagementComponent();
-	if (!IsValid(EnemyManagerComponent))
-	{
-		UE_LOG(LogTemp, Error, TEXT("Incorrect enemy manager to use boss."))
-		return;
-	}
+	if (!IsValid(EnemyManagerComponent)) { return; }
 	
 	for (int i = 0; i < GruntSummonAmount; i++)
 	{
@@ -515,7 +501,6 @@ void ABossEnemy::SummonGruntEnemies()
 		
 		if (IsValid(SummonedGrunt))
 		{
-			UE_LOG(LogTemp, Log, TEXT("Summoned grunt enemy for boss: %s"), *SummonedGrunt->GetName())
 			SummonedGrunt->UseAggressiveTreeOnly();
 			GruntSummons.Add(SummonedGrunt);
 		}
@@ -627,6 +612,20 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			CollisionParams
 		);
 		
+		
+		TArray<FHitResult> HitResultss;
+		DrawDebugSphereTraceMulti(
+			GetWorld(),
+			StrikeLocation + FVector(0.f, 0.f, 50000.f),
+			StrikeLocation * FVector(1.f, 1.f, 0.f),
+			LightningStrikeDamageRadius,
+			EDrawDebugTrace::ForDuration,
+			false,
+			HitResultss,
+			FLinearColor::Red,
+			FLinearColor::Green,
+			3.f);
+		
 		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningStrikeEffect,
@@ -646,6 +645,7 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			
 			for (const FHitResult& HitResult : HitResults)
 			{
+				UE_LOG(LogTemp, Log, TEXT("%s"), *HitResult.GetActor()->GetName());
 				if (HitResult.GetActor() == PlayerCharacter)
 				{
 					UGameplayStatics::ApplyDamage(
