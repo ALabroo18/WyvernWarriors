@@ -241,43 +241,30 @@ void UEnemyManagerComponent::SetupEnemyManager()
 /* Spawns a random amount of grunt enemies on outpost patrol route depending on pre-existing amount and add enemies to
  * outpost if not already there. Doesn't spawn if too many grunts or if outpost patrol route is full.
  * @param Outpost - The outpost for which to spawn the grunt enemies
- * @param bIsFinalWave - Whether the current wave is the final wave
+ * @return bool = If grunts were able to spawn at the outpost.
  */
-void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool const bIsFinalWave)
+bool UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost)
 {
-	if (ActiveGruntEnemies.Num() >= GruntSpawnCapacity)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Too many active grunts, unable to spawn grunts for outpost."));
-		return;
-	}
 	
 	AEnemyPatrolRoute* OutpostPatrolRoute = Outpost->GetOutpostPatrolRoute();
 	if (!IsValid(OutpostPatrolRoute))
 	{
 		UE_LOG(LogTemp, Error, TEXT("%s patrol route is invalid or full."), *Outpost->GetName());
-		return;
-	}
-	
-	if (OutpostPatrolRoute->GetRouteFull())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("%s patrol route is  full."), *Outpost->GetName());
-		return;
+		return false;
 	}
 	
 	int32 const MaxGruntSpawn = OutpostPatrolRoute->GetMaxEnemiesOnRoute() - OutpostPatrolRoute->GetNumEnemiesOnRoute();
 	int32 SpawnAmount = FMath::RandRange(MaxGruntSpawn / 2, MaxGruntSpawn);
 	int32 SpawnAttempts = 0;
-	bool bUnableToSpawnAtOutpost = false;
+	bool bSuccessfulSpawn = false;
 	
-	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull())
+	while (SpawnAmount > 0 && !OutpostPatrolRoute->GetRouteFull() && ActiveGruntEnemies.Num() <= GruntSpawnCapacity)
 	{
 		float RouteSpawnDistance;
 		FTransform SpawnTransform;
-		if (SpawnAttempts >= 10 || bUnableToSpawnAtOutpost)
+		if (SpawnAttempts >= 10)
 		{
-			bUnableToSpawnAtOutpost = true;
-			UE_LOG(LogTemp, Warning, TEXT("Unable to spawn at %s patrol route, spawning at spawn point instead."), *Outpost->GetName());
-			SpawnTransform = GetGruntSpawnTransform(nullptr, RouteSpawnDistance);
+			return bSuccessfulSpawn;
 		}
 		else
 		{
@@ -304,7 +291,10 @@ void UEnemyManagerComponent::SpawnGruntEnemiesForOutpost(AOutpost* Outpost, bool
 		}
 
 		SpawnAmount--;
+		bSuccessfulSpawn = true;
 	}
+	
+	return bSuccessfulSpawn;
  }
 
 // Spawns boss enemy at the boss route
