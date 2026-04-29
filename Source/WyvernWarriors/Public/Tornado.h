@@ -4,7 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Components/SplineComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Tornado.generated.h"  
+#include "Tornado.generated.h"
 
 UCLASS()
 class WYVERNWARRIORS_API ATornado : public AActor
@@ -24,48 +24,74 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tornado")
     USplineComponent* SplinePath;
 
-    // Outer capsule - triggers enter/exit detection
+    // Overlap trigger — radius should match ForceOuterRadius (2x TornadoBodyRadius)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tornado")
     UCapsuleComponent* OuterZone;
 
-    // Inner capsule - used only for radius math, no collision
+    // Visual/reference shape for the funnel body — no collision
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tornado")
     UCapsuleComponent* InnerZone;
 
     UPROPERTY(EditAnywhere, Category = "Tornado|Movement")
-    float MovementSpeed = 400.f;
+    float MovementSpeed = 1200.f;
+
+    // --- Damage ---
+
+    // Damage per second at the tornado's eye (t = 0, closest)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Damage")
+    float MaxDamagePerSecond = 15.f;
+
+    // Damage per second at the outer pull radius (t = 1, farthest)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Damage")
+    float MinDamagePerSecond = 2.f;
 
     UPROPERTY(EditAnywhere, Category = "Tornado|Damage")
-    float MaxDamagePerSecond = 80.f;
+    float DamageTickRate = 0.5f;
 
+    // Player is ejected once this much total damage has accumulated — 2 health sections (2 x 25 HP)
     UPROPERTY(EditAnywhere, Category = "Tornado|Damage")
-    float MinDamagePerSecond = 5.f;
+    float MaxTotalDamagePerCharacter = 50.f;
 
-    // How often damage applies - actual hit = DPS * TickRate
-    UPROPERTY(EditAnywhere, Category = "Tornado|Damage")
-    float DamageTickRate = 0.2f;
+    // --- Physics ---
 
-    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
-    float MaxTangentialForce = 3000.f;
-
-    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
-    float MaxInwardForce = 1200.f;
-
-    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
-    float MaxUpwardForce = 800.f;
-
-    // Radius of the eye in cm
+    // Eye radius — inner calm zone where centrifugal force counters inward suction (cm)
     UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
     float ForceInnerRadius = 200.f;
 
-    // Radius of the full influence zone in cm
+    // Widest radius of the visible funnel / eye wall — peak swirl and updraft occur here (cm)
     UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
-    float ForceOuterRadius = 1500.f;
+    float TornadoBodyRadius = 600.f;
+
+    // Outer pull zone — set to ~2x TornadoBodyRadius; OuterZone capsule should match (cm)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float ForceOuterRadius = 1200.f;
+
+    // Peak rotational (swirl) force at the eye wall (cm/s²)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float MaxTangentialForce = 3500.f;
+
+    // Peak inward suction force at the outer boundary (cm/s²)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float MaxInwardForce = 1500.f;
+
+    // Peak updraft force inside the funnel body (cm/s²)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float MaxUpwardForce = 1000.f;
+
+    // Outward launch speed when the player is ejected (cm/s)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float EjectionOutwardSpeed = 1500.f;
+
+    // Upward launch speed when the player is ejected (cm/s)
+    UPROPERTY(EditAnywhere, Category = "Tornado|Physics")
+    float EjectionUpwardSpeed = 700.f;
 
 private:
-    // Characters currently inside OuterZone
     UPROPERTY()
     TArray<ACharacter*> AffectedCharacters;
+
+    // Cumulative damage dealt to each character during this pass through the tornado
+    TMap<ACharacter*, float> CharacterDamageAccumulated;
 
     float CurrentSplineDistance = 0.f;
     bool  bReachedEnd = false;
@@ -74,8 +100,9 @@ private:
     void MoveAlongSpline(float DeltaTime);
     void ApplyForcesToCharacter(ACharacter* Character, float DeltaTime);
     void ApplyDamageTick(float DeltaTime);
+    void EjectCharacter(ACharacter* Character);
 
-    // Returns 0 at inner radius, 1 at outer radius
+    // Returns 0 at the tornado centre, 1 at ForceOuterRadius
     float GetNormalizedDistance(const FVector& Location) const;
 
     UFUNCTION()
