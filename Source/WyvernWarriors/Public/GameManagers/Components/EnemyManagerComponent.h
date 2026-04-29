@@ -65,6 +65,10 @@ public:
 
 	// Adds a  controller into the inactive grunt controller queue
 	void AddInactiveGruntEnemyController(AGruntEnemyController* GruntEnemyController) { InactiveGruntEnemyControllers.Enqueue(GruntEnemyController); }
+	
+	// Array of active grunt enemies 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
+	TArray<AGruntEnemy*> ActiveGruntEnemies;
 
 private:
 	// Event bus used for delegates
@@ -74,10 +78,6 @@ private:
 	// Time between grunt spawns during runtime
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
 	float RuntimeGruntSpawnDelay;
-	
-	// Array of active grunt enemies 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
-	TArray<AGruntEnemy*> ActiveGruntEnemies;
 	
 	// Queue of inactive grunt enemies
 	TQueue<AGruntEnemy*> InactiveGruntEnemies;

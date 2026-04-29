@@ -26,19 +26,11 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 
 	// Cast the possessed pawn to AGruntEnemy
 	const AGruntEnemy* ControlledGruntEnemy = Cast<AGruntEnemy>(GetPawn());
-	if(!IsValid(ControlledGruntEnemy))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess is invalid"));
-		return;
-	}
+	if(!IsValid(ControlledGruntEnemy)) { return; }
 
 	// Initialize the blackboard with the behavior tree's asset
 	GruntBlackboardComponent->InitializeBlackboard(*GruntBehaviorTree->BlackboardAsset);
-	if (!IsValid(GruntBlackboardComponent))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess has invalid blackboard"));
-		return;
-	}
+	if (!IsValid(GruntBlackboardComponent)) { return; }
 
 	GruntBlackboardComponent->SetValueAsBool(FName(TEXT("bOnPatrolRoute")), ControlledGruntEnemy->GetOnPatrolRoute()); // Set the controlled grunt enemy in the blackboard
 	GruntBlackboardComponent->SetValueAsObject(FName(TEXT("PlayerWyvern")), UGameplayStatics::GetPlayerPawn(GetWorld(), 0)); // Set the controlled grunt enemy in the blackboard

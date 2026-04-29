@@ -12,33 +12,22 @@ ATornadoSpawner::ATornadoSpawner()
 void ATornadoSpawner::BeginPlay()
 {
     Super::BeginPlay();
-    UE_LOG(LogTemp, Error, TEXT("TornadoSpawner: BeginPlay fired"));
 }
 
 void ATornadoSpawner::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (IsValid(ActiveTornado))
-    {
-        // UE_LOG(LogTemp, Warning, TEXT("Spawner: Tornado already active, skipping"));
-        return;
-    }
+    if (IsValid(ActiveTornado)) { return; }
 
     CooldownAccumulator += DeltaTime;
-    // UE_LOG(LogTemp, Warning, TEXT("Spawner: Cooldown %.1f / %.1f"), CooldownAccumulator, SpawnCooldown);
 
     if (CooldownAccumulator < SpawnCooldown) return;
 
     APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-    if (!Player)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Spawner: No player found"));
-        return;
-    }
+    if (!Player){ return; }
 
     const float Dist = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
-    // UE_LOG(LogTemp, Warning, TEXT("Spawner: Player distance %.1f / %.1f radius"), Dist, SpawnProximityRadius);
 
     if (Dist <= SpawnProximityRadius)
     {
@@ -49,11 +38,7 @@ void ATornadoSpawner::Tick(float DeltaTime)
 
 void ATornadoSpawner::TrySpawnTornado()
 {
-    if (!TornadoClass)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Spawner: TornadoClass is null - assign BP_Tornado in Details"));
-        return;
-    }
+    if (!TornadoClass) { return; }
 
     FActorSpawnParameters Params;
     Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -61,24 +46,12 @@ void ATornadoSpawner::TrySpawnTornado()
     ATornado* NewTornado = GetWorld()->SpawnActor<ATornado>(
         TornadoClass, GetActorLocation(), FRotator::ZeroRotator, Params);
 
-    if (!NewTornado)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Spawner: SpawnActor returned null"));
-        return;
-    }
+    if (!NewTornado) { return; }
 
     USplineComponent* Spline = NewTornado->SplinePath;
-    if (!Spline)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Spawner: SplinePath component is null on spawned tornado"));
-        return;
-    }
+    if (!Spline) { return; }
 
-    if (SplinePointOffsets.Num() < 2)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Spawner: SplinePointOffsets has %d points - needs at least 2"), SplinePointOffsets.Num());
-        return;
-    }
+    if (SplinePointOffsets.Num() < 2) { return; }
 
     Spline->ClearSplinePoints();
     for (int32 i = 0; i < SplinePointOffsets.Num(); i++)
@@ -86,7 +59,4 @@ void ATornadoSpawner::TrySpawnTornado()
 
     Spline->UpdateSpline();
     ActiveTornado = NewTornado;
-
-    UE_LOG(LogTemp, Warning, TEXT("Spawner: SUCCESS - tornado spawned with %d spline points, length %.1f"),
-        SplinePointOffsets.Num(), Spline->GetSplineLength());
 }

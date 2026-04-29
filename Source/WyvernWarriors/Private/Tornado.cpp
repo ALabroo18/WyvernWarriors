@@ -42,7 +42,6 @@ void ATornado::BeginPlay()
         if (NC)
         {
             NC->Activate(true);
-            UE_LOG(LogTemp, Warning, TEXT("Tornado: Activated Niagara component %s"), *NC->GetName());
         }
     }
 

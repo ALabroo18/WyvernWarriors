@@ -50,7 +50,6 @@ void AGameModeLevel::OnBossDefeated(EBossState const NewState)
 {
 	if (NewState == EBossState::Defeated)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Boss has been defeated, set timer to win level."))
 		GetWorldTimerManager().SetTimer(
 			LevelWinHandle,
 			this,
