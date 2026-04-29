@@ -46,10 +46,7 @@ void UWaveManagerComponent::NewWave()
 		{
 			if (IsValid(Outpost))
 			{
-				if (!Outpost->GetPlayerCapturedStatus())
-				{
-					Outpost->NewWave(bIsFinalWave);
-				}
+				Outpost->NewWave(true);
 			}
 		}
 	}
@@ -100,7 +97,7 @@ void UWaveManagerComponent::RecaptureOutposts()
 		{
 			if (IsValid(Outpost))
 			{
-				Outpost->NewWave(bIsFinalWave); // Recapture player-controlled outposts
+				Outpost->NewWave(false); // Recapture player-controlled outposts
 			}
 		}
 		
@@ -126,10 +123,29 @@ void UWaveManagerComponent::RecaptureOutposts()
 
 		if (IsValid(OutpostToRecapture))
 		{
-			OutpostToRecapture->NewWave(bIsFinalWave); // Recapture selected outpost
+			OutpostToRecapture->NewWave(false); // Recapture selected outpost
 			PlayerControlledOutposts.RemoveAt(RandomIndex); // Remove from list to avoid duplicate recaptures
 		}
 	}
+}
+
+/*  Filters all enemy captured outposts into an array and returns a random outpost.
+ *  @return AOutpost - random enemy captured outpost.
+ */
+AOutpost* UWaveManagerComponent::GetRandomCapturedOutpost()
+{
+	TArray<AOutpost*> CapturedOutposts;
+	for (AOutpost* Outpost : Outposts)
+	{
+		if (IsValid(Outpost) && !Outpost->GetPlayerCapturedStatus())
+		{
+			CapturedOutposts.Add(Outpost);
+		}
+	}
+	
+	if (CapturedOutposts.IsEmpty()) { return nullptr; }
+	
+	return CapturedOutposts[FMath::RandRange(0, CapturedOutposts.Num() - 1)]; 
 }
 
 // Resets the control meter to half its maximum value over time
@@ -144,7 +160,7 @@ void UWaveManagerComponent::ResetControlMeter()
 }
 
 // Sets the starting variables for wave management
-void UWaveManagerComponent::SetStartVariables()
+void UWaveManagerComponent::SetupWaveManager()
 {
 	GameModeLevel = Cast<AGameModeLevel>(GetOwner()); // Get reference to game mode level
 	GameStateLevel = Cast<AGameStateLevel>(GameModeLevel->GetGameStateLevelRef()); // Get reference to game state level
@@ -176,7 +192,7 @@ void UWaveManagerComponent::ModifyControlMeterCurrent(float Amount, bool bCanByp
 	// Do not modify control meter if it is resetting
 	if (bResettingControlMeter)
 	{
-		if (bCanBypassReset == false)
+		if (!bCanBypassReset)
 		{
 			return;
 		}

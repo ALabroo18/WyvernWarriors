@@ -1,4 +1,5 @@
 #include "GameManagers/GameModeLevel.h"
+#include "BossEnemy.h"
 #include "GameManagers/GameStateLevel.h"
 #include "GameManagers/Components/CannonManagerComponent.h"
 #include "GameManagers/Components/EnemyManagerComponent.h"
@@ -16,19 +17,46 @@ AGameModeLevel::AGameModeLevel()
 	EventBus = CreateDefaultSubobject<UEventBusComponent>("EventBus"); // Create event bus
 }
 
-// Set references and variables
+/* Get reference to game state and set up game manager components. End by starting first wave.
+ */
 void AGameModeLevel::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// Get game state level
+	
 	GameStateLevel = Cast<AGameStateLevel>(GetWorld()->GetGameState());
 	if (!IsValid(GameStateLevel))
 	{
 		return;
 	}
 
-	CannonManager->SetStartVariables(); // Set starting variables for cannon manager
-	WaveManager->SetStartVariables(); // Set starting variables for wave manager
-	WaveManager->NewWave(); // Start first wave
+	CannonManager->SetupCannonManager();
+	EnemyManager->SetupEnemyManager();
+	WaveManager->SetupWaveManager();
+	
+	EventBus->OnBossStateChange.AddDynamic(this, &AGameModeLevel::OnBossDefeated);
+}
+
+/* Start the level and the first wave.
+ */
+void AGameModeLevel::StartLevel() const
+{
+	WaveManager->NewWave();
+	EventBus->StartLevel.Broadcast();
+}
+
+/* Wins the level after the boss is defeated and the timer runs out.
+ */
+void AGameModeLevel::OnBossDefeated(EBossState const NewState)
+{
+	if (NewState == EBossState::Defeated)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Boss has been defeated, set timer to win level."))
+		GetWorldTimerManager().SetTimer(
+			LevelWinHandle,
+			this,
+			&AGameModeLevel::WinLevel,
+			LevelWinHandleTime,
+			false
+		);
+	}
 }

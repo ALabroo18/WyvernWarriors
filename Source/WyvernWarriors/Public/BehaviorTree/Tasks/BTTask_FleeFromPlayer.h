@@ -32,7 +32,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector FleeingKey;
 	
-	// Blackboard key for the player wyvern
+	// Blackboard key for the controlled grunt.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector SelfGruntKey;
 	
@@ -40,7 +40,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector PlayerCharacterKey;
 	
-	// Blackboard key for the player wyvern
+	// Blackboard key for the distance to player.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = true))
 	FBlackboardKeySelector DistanceToPlayerKey;
 	

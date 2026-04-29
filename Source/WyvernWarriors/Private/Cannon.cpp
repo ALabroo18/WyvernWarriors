@@ -6,6 +6,7 @@
 #include "Components/SphereComponent.h"
 #include "GameManagers/GameModeLevel.h"
 #include "GameManagers/Components/EventBusComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 
 /* Sets up physics and detection collision components, static meshes for cannon top and bottoms, and UI widget
@@ -29,6 +30,16 @@ ACannon::ACannon()
 	
 	ReadyToFireWidget = CreateDefaultSubobject<UWidgetComponent>("Ready To Fire Widget");
 	ReadyToFireWidget->SetupAttachment(RootComponent);
+	ReadyToFireWidget->SetVisibility(false);
+}
+
+/* Gets event bus when starting level.
+ */
+void ACannon::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
 }
 
 /* Calls method that cannon can be loaded
@@ -47,6 +58,14 @@ void ACannon::OnCannonOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* Ot
 	SetCanLoadCannon(false, OtherActor);
 }
 
+/* Gets the vector distance squared between the cannon and the boss.
+ * @return float - Distance to the boss squared.
+ */
+float ACannon::GetDistanceToBossSquared()
+{
+	return UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossEnemy->GetActorLocation());
+}
+
 /* Sets or unsets cannonball to be loaded. Broadcasts delegate on if cannon can be loaded or not.
  */
 void ACannon::SetCanLoadCannon(bool const bSetCanLoad, AActor *CannonballToLoad)
@@ -61,7 +80,6 @@ void ACannon::SetCanLoadCannon(bool const bSetCanLoad, AActor *CannonballToLoad)
 		return;
 	}
 	
-	const UEventBusComponent* EventBus = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode())->GetEventBusComponent();
 	EventBus->CannonCanBeLoaded.Broadcast(bSetCanLoad, this);
 }
 
@@ -77,88 +95,84 @@ void ACannon::LoadCannon(ACannonball* CannonballToLoad)
 	Cannonball->SetActiveness(false);
 	
 	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	SetCanLoadCannon(false, CannonballToLoad);
 	bCanBeLoaded = false;
 	bReadyToFire = true;
+	SetCanLoadCannon(false, CannonballToLoad);
+	EventBus->OnCannonLoaded.Broadcast();
 }
 
-/* Rotates and fires the cannonball at the boss. Also rotates the cannon to face at where the boss will be. Sets the
- * cannon as not ready to fire after firing.
+/* Rotates the cannon to face at where the boss will be and stops village destruction. Sets the cannon as not ready to 
+ * fire. Plays fuse sound effect and set timer to fire cannonball after sound effect duration.
  */
-void ACannon::FireCannonball()
+void ACannon::LightCannonFuse()
 {
-	if (!bReadyToFire)
-	{
-		return;
-	}
+	if (!bReadyToFire) { return; }
+	if (!IsValid(BossEnemy)) { return; }
+	if (!IsValid(Cannonball)) { return; }
 	
-	if (!IsValid(BossEnemy))
-	{
-		return;
-	}
+	SetUnloadable();
+	BossEnemy->ClearDestroyVillageTimer();
+	FRotator FireRotation = SetFiringRotation();
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFuseSFX, GetActorLocation());
 	
-	if (!IsValid(Cannonball))
-	{
-		return;
-	}
-	
+	GetWorldTimerManager().SetTimer(
+		CannonFireHandle,
+		FTimerDelegate::CreateUObject(this, &ACannon::FireCannonball, FireRotation),
+		CannonFuseSFX->GetDuration(),
+		false);
+}
+
+/* Rotates and fires the cannonball at the boss. Plays cannon fired sound effect.
+ * @param FireRotation - The rotation from the cannon location to face the boss.
+ */
+void ACannon::FireCannonball(FRotator const FireRotation)
+{
 	Cannonball->SetAsFired(SetFiringRotation());
-	SetLoadable(false);
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), CannonFiredSFX, GetActorLocation());
 }
 
-/* Sets whether the cannon is able to be loaded. Sets the visibility of the ready to fire widget and the collision of
- * the cannon components based on whether the cannon can be loaded or not.
- * @param bCanLoad- Whether the cannon should be able to be loaded or not
+/* Sets the cannon as able to be loaded. Sets ready to fire widget as visible and the collision of the cannon
+ * components as queryable.
  */
-void ACannon::SetLoadable(bool const bCanLoad)
+void ACannon::SetLoadable()
 {
-	bCanBeLoaded = bCanLoad;
-	ReadyToFireWidget->SetVisibility(bCanLoad);
+	bCanBeLoaded = true;
+	ReadyToFireWidget->SetVisibility(true);
+	CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	
-	if (bCanLoad)
-	{
-		CannonCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		CannonballDetection->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	}
-	else
-	{
-		CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
+	GetWorldTimerManager().SetTimer(
+		FireWidgetUITimer,
+		this,
+		&ACannon::UpdateFireWidget,
+		0.1f,
+		true
+	);
 }
 
-// Rotate the cannon to fire at where the boss will be
+/* Sets the cannon as unable to be loaded and unready to fire. Sets ready to fire widget as invisible and the collision
+ * of the cannon components as no collision.
+ */
+void ACannon::SetUnloadable()
+{
+	bCanBeLoaded = false;
+	bReadyToFire = false;;
+	ReadyToFireWidget->SetVisibility(false);
+	CannonCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CannonballDetection->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+/* Gets rotation towards boss then rotates full cannon yaw towards boss and cannon barrel roll towards boss.
+ * @return FRotator - The rotation from the cannon location to face the boss.
+ */
 FRotator ACannon::SetFiringRotation()
 {
-	FVector const CurrentLocation = GetActorLocation(); // Get actor location
-	float const CannonballSpeed = Cannonball->GetProjectileSpeed(); // Get cannonball speed
-	float PreviousDistance = 0.f; // Variable for distance of previous trial
+	FRotator const RotationTowardsBoss = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), BossEnemy->GetActorLocation()); 
+	FRotator CurrentRotation = GetActorRotation();
+	CurrentRotation.Yaw = RotationTowardsBoss.Yaw;
+	SetActorRotation(CurrentRotation);
 	
-	float DistanceToBoss = UKismetMathLibrary::Vector_Distance(CurrentLocation, BossEnemy->GetActorLocation()); // Get distance to current boss location
-	float TravelTime = DistanceToBoss / CannonballSpeed; // Get travel time of cannonball to get to current boss location
-	FVector TargetLocation = BossEnemy->GetFutureLocation(TravelTime); // Get future boss location after time of travel
-	
-	// Continuously get travel time to future boss location until same distance is gotten.
-	for (int i = 0; i < 75; i++)
-	{
-		float const PrePreviousDistance = PreviousDistance; // Variable for the distance of the trial before the previous trial
-		PreviousDistance = DistanceToBoss; // Update previous trial distance
-		DistanceToBoss = UKismetMathLibrary::Vector_Distance(CurrentLocation, TargetLocation); // Set distance to current future boss location
-		TravelTime = DistanceToBoss / CannonballSpeed; // Set travel time to get to current future boss location
-		TargetLocation = BossEnemy->GetFutureLocation(TravelTime); // Get the next future boss's location given the current travel time
-		
-		// Break when a future boss's distance matches a previous trial
-		if (PreviousDistance == DistanceToBoss || PrePreviousDistance == DistanceToBoss)
-		{
-			break;
-		}
-	}
-	
-	FRotator const RotationTowardsBoss = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), TargetLocation); // Rotation towards's future boss's location
-	FRotator CurrentRotation = GetActorRotation(); // Get current cannon rotation
-	CurrentRotation.Yaw = RotationTowardsBoss.Yaw; // Change cannon yaw rotation
-	SetActorRotation(CurrentRotation); // Rotate entire cannon yaw towards boss
-	
-	FRotator const CurrentTopRotation = FRotator(0.0, -90.0, -RotationTowardsBoss.Pitch); // Set cannon top rotation to align with boss and bottom
-	CannonTopMesh->SetRelativeRotation(CurrentTopRotation); // Rotate cannon top roll towards boss
+	FRotator const CurrentTopRotation = FRotator(0.0, -90.0, -RotationTowardsBoss.Pitch);
+	CannonTopMesh->SetRelativeRotation(CurrentTopRotation);
 	return RotationTowardsBoss;
 }

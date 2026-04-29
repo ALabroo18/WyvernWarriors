@@ -1,133 +1,510 @@
 #include "BossEnemy.h"
 #include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/WaveManagerComponent.h"
+#include "GameManagers/Components//EnemyManagerComponent.h"
+#include "GameManagers/Components//EventBusComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "NiagaraFunctionLibrary.h"
-#include "Components/SplineComponent.h"
-
+#include "WeaponDropOff.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "GruntEnemy.h"
+#include "Blueprint/UserWidget.h"
+#include "NiagaraComponent.h"
+#include "BossAnimInstance.h"
+#include "KismetTraceUtils.h"
 
 class AEnemyPatrolRoute;
 
 #define PLAYER_COLLISION_CHANNEL ECollisionChannel::ECC_GameTraceChannel1
 
-// Moves the enemy along the spline path
-void ABossEnemy::MoveAlongSpline(float const DeltaTime)
+/* Sets tick to true. Sets up force field component and its tick
+ */
+ABossEnemy::ABossEnemy()
 {
-	// If no spline component, don't move
-	if (!IsValid(SplineComponent))
-	{
-		return;
-	}
+	PrimaryActorTick.bCanEverTick = true;
 	
-	DistanceAlongSpline += FloatingPawnMovement->MaxSpeed * DeltaTime; // Update distance along spline based on movement speed
-	
-	FRotator const SplineRotation = SplineComponent->GetRotationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new rotation on spline
-	SetActorRotation(SplineRotation); // Rotate enemy to next rotation
-	
-	FVector const SplineLocation = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get new location on spline
-	SetActorLocation(SplineLocation); // Move enemy to next location
-	
-	// Reset distance if end of spline reached
-	if (DistanceAlongSpline >= SplineComponent->GetSplineLength())
-	{
-		DistanceAlongSpline -= SplineComponent->GetSplineLength();
-	}
+	ForceField = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ForceField"));
+	ForceField->SetupAttachment(SkeletalMesh);
+	ForceField->bAllowConcurrentTick = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
 }
 
-// Deals damage to force field and deactivates at 0 health
-void ABossEnemy::DamageForceField()
+/* Sets up health, movement speed, and reference to event bus. Restores force field and binds function to grunt death.
+ * Saves all weapon drop-offs into an array. Summons grunts for first state.
+ */
+void ABossEnemy::BeginPlay()
 {
-	CurrentForceFieldHealth--; // Reduce health
-	CurrentForceFieldHealth = FMath::Clamp(CurrentForceFieldHealth, 0, MaxForceFieldHealth); // Clamp health to correct values
-
-	// Deactivate force field when health hits 0
-	if (CurrentForceFieldHealth == 0)
+	Super::BeginPlay();
+	
+	ForceField->SetVisibility(false);
+	SkeletalMesh->SetVisibility(false);
+	
+	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel)) return;
+	EventBus = GameModeLevel->GetEventBusComponent();
+	if (!IsValid(EventBus)) return;
+	
+	CurrentHealth = MaxHealth;
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
+	EventBus->OnGruntDeath.AddDynamic(this, &ABossEnemy::RemoveGruntFromArray);
+	EventBus->OnFinalBlowQTE.AddDynamic(this, &ABossEnemy::PlayFinalBlowQTE);
+	BossAnimInstance = Cast<UBossAnimInstance>(SkeletalMesh->GetAnimInstance());
+	
+	TArray<AActor*> TempActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeaponDropOff::StaticClass(), TempActors);
+	for (AActor* Actor : TempActors)
 	{
-		bIsForceFieldActive = false;
-		
-		// Remove visual of force field
-		if (IsValid(SkeletalMesh))
+		if (IsValid(Actor))
 		{
-			SkeletalMesh->SetOverlayMaterial(nullptr); 
+			WeaponDropOffs.Add(Cast<AWeaponDropOff>(Actor));
 		}
-		
-		OnForceFieldChange.Broadcast(EForceFieldChange::Depleted); // Broadcast depletion of force field
 	}
-	// Broadcast hit to force field state
-	else
+	
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+}
+
+/* Depending on boss state, move along patrol route, move above a village, hover above the villages, or move back to
+ * patrol route.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::Tick(float const DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	switch (CurrentState)
 	{
-		OnForceFieldChange.Broadcast(EForceFieldChange::Hit); 
+		case EBossState::Intro:
+			MoveIntoIntroCutscene(DeltaTime);
+			break;
+		case EBossState::OnPatrolRoute:
+			MoveAlongSpline(DeltaTime);
+			break;
+		case EBossState::ApproachVillage:
+			ApproachVillage(DeltaTime);
+			break;
+		case EBossState::ReturningToPatrolRoute:
+			ReturnToRoute(DeltaTime);
+			break;
+		case EBossState::Hovering:
+			RotateThenHover(DeltaTime);
+			break;
+		case EBossState::Defeated:
+			RotateAndMove(CutsceneMovementDirection, DeltaTime);
+			break;
+		case EBossState::FinalBlow:
+			MoveIntoFinalBlow(DeltaTime);
+			break;
 	}
 }
 
-// Reactivates force field and restores its health
+/* Spawn force field break niagara system then set force field inactive in collision and visibility. Broadcast force
+ * field change. Set timer to restore force field.
+ */
+void ABossEnemy::DestroyForceField()
+{
+	bIsForceFieldActive = false;
+	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ForceField->SetVisibility(false);
+	EventBus->OnForceFieldChange.Broadcast(false); 
+	
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceFieldNiagara,
+		TimeToRestoreForceField,
+		false
+	);
+}
+
+/* Stop lightning strikes and play the force field destroyed niagara effect. Play the dazed animation. Set timer
+ * to finish destroying force field.
+ */
+void ABossEnemy::DestroyForceFieldNiagara()
+{
+	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
+	
+	UNiagaraFunctionLibrary::SpawnSystemAttached(
+		ForceFieldBreak,
+		ForceField,
+		NAME_None,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		EAttachLocation::SnapToTargetIncludingScale,
+		true
+	);
+	
+	BossAnimInstance->ChangeDazedBlend(1.f);
+	
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::DestroyForceField,
+		0.7f,
+		false
+		);
+}
+
+/* Sets force field active with collision and visibility. Broadcast force field change. Enable actor tick and change
+ * state to return to patrol route.
+ */
 void ABossEnemy::RestoreForceField()
 {
-	bIsForceFieldActive = true; // Set force field active
+	ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ForceField->SetVisibility(true);
+	bIsForceFieldActive = true;
+	EventBus->OnForceFieldChange.Broadcast(true);
 	
-	// Set force field visual
-	if (IsValid(SkeletalMesh))
-	{
-		SkeletalMesh->SetOverlayMaterial(ForceFieldMaterial);
-		UE_LOG(LogTemp, Log, TEXT("Set force field"));
-	}
-	
-	CurrentForceFieldHealth = MaxForceFieldHealth; // Set force field health to max
-	OnForceFieldChange.Broadcast(EForceFieldChange::Restored); // Broadcast force field as restored
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
 }
 
-// Get the distance along the spline in the future
-FVector ABossEnemy::GetFutureLocation(float const TimePassed) const
+/* Plays force field restored niagara effect and stops dazed animation. Set timer to finish restoring force field.
+ */
+void ABossEnemy::RestoreForceFieldNiagara()
 {
-	float FutureSplineDistance = DistanceAlongSpline + (TimePassed * FloatingPawnMovement->MaxSpeed); // Get Distance in time passed seconds
-	float const SplineLength = SplineComponent->GetSplineLength(); // Get spline length
+	UNiagaraFunctionLibrary::SpawnSystemAttached(
+			ForceFieldRestore,
+			ForceField,
+			NAME_None,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTargetIncludingScale,
+			true
+		);
+
+	BossAnimInstance->ChangeDazedBlend(0.f);
 	
-	// If longer than spline length, subtract until shorter
-	while (FutureSplineDistance > SplineLength)
-	{
-		FutureSplineDistance -= SplineLength;
-	}
-	
-	return SplineComponent->GetLocationAtDistanceAlongSpline(FutureSplineDistance, ESplineCoordinateSpace::World); // Return the world space at that distance
+	GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::RestoreForceField,
+		2.8f,
+		false
+		);
+}
+
+/* Enable actor tick and get direction towards exit. Change state to defeated and broadcast change.
+ */
+void ABossEnemy::FinalBlowQTESuccess()
+{
+	SetActorTickEnabled(true);
+	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
+	CurrentState = EBossState::Defeated;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+}
+
+/* Set health to 10% of max and restore force field. Change state to return to route and broadcast change.
+ */
+void ABossEnemy::FinalBlowQTEFailure()
+{
+	CurrentHealth = MaxHealth/10;
+	RestoreForceFieldNiagara();
+	ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+	CurrentState = EBossState::Hovering;
+	EventBus->OnFinalBlowFailure.Broadcast();
 }
 
 // Performs a lightning strike attack on the player
 void ABossEnemy::AttackPlayer()
 {
-	if (PlayerCharacter == nullptr) return; // Early out if no player found
-
-	StrikesExecuted = 0; // Reset strike count
+	if (!IsValid(PlayerCharacter)) return; // Early out if no player found
 
 	GetWorldTimerManager().SetTimer(
 		LightningStrikeHandle,
 		this,
 		&ABossEnemy::TelegraphLightningStrikes,
-		LightningAttackBurstInterval,
-		StrikesExecuted < 3
+		LightningAttackInterval,
+		true
 	);
 }
 
-// Destroys self and completes the wave
+/* Check for final blow QTE. Set health to 1 and stops force field restore but set force field to prevent damage. Stop
+ * dazed animation, then get direction towards final blow location and change state for final blow. Enable ticking.
+ */
 void ABossEnemy::DestroySelfEnemy()
 {
-	// Get reference to the game mode
-	const AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameMode))
+	if (!IsValid(FinalBlowQTE)) { return; }
+	
+	CurrentHealth = 1.f;
+	bIsForceFieldActive = true; // Force field active to prevent additional damage.
+	GetWorldTimerManager().ClearTimer(ForceFieldHandle);
+	
+	CutsceneMovementDirection = (BossFinalBlowLocation - GetActorLocation()).GetSafeNormal();
+	BossAnimInstance->ChangeDazedBlend(.5f);
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::FinalBlow;
+}
+
+/* Changes state to hovering and gets rotation to look at village with 0 pitch. Starts timer to destroy village.
+ */
+void ABossEnemy::SwitchToHoveringState()
+{
+	RotationTowardsVillage = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), VillageHoverLocation - BossLocationOffset);
+	RotationTowardsVillage = FRotator(0.f, RotationTowardsVillage.Yaw, RotationTowardsVillage.Roll);
+	
+	CurrentState = EBossState::Hovering;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+	
+	GetWorldTimerManager().SetTimer(
+		VillageTimerHandle,
+		this,
+		&ABossEnemy::DestroyVillage,
+		TimeToDestroyVillage,
+		false);
+}
+
+/* Gets tag of targeted village weapon drop-off and broadcasts destroyed village with that tag. Removes weapon drop-off
+ * from array. If no weapon drop-offs left, call lose level in game mode.
+ */
+void ABossEnemy::DestroyVillage()
+{
+	FName const DestroyedTag = WeaponDropOff->Tags.Last();
+	EventBus->OnVillageDestroyed.Broadcast(DestroyedTag);
+	WeaponDropOffs.Remove(WeaponDropOff);
+	if (WeaponDropOffs.IsEmpty())
 	{
+		AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(GetWorld()->GetAuthGameMode());
+		GameModeLevel->LoseLevel();
 		return;
 	}
 	
-	// Get reference to the wave manager
-	UWaveManagerComponent* WaveManagerComponent = Cast<UWaveManagerComponent>(GameMode->GetWaveManagementComponent());
-	if (!IsValid(WaveManagerComponent))
+	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+}
+
+/* Move boss towards final blow location. If close enough, stop ticking and enable force field to stop damage. Set
+ * force field as query only and to overlap pawns.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::MoveIntoFinalBlow(float const DeltaTime)
+{
+	RotateAndMove(CutsceneMovementDirection, DeltaTime);
+	
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossFinalBlowLocation) < FMath::Square(6000.f))
 	{
+		SetActorTickEnabled(false);
+		bIsForceFieldActive = true;
+		ForceField->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		ForceField->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+	}
+}
+
+
+/* Sets positions used in boss cutscenes. Gets movement for intro cutscene and set boss to spawn location and rotation.
+ * Makes boss mesh visible.
+ * @param Spawn - location for boss spawning.
+ * @param Intro - location of boss during intro.
+ * @param FinalBlow - location of the boss for the final blow.
+ * @param Exit - location boss moves to when exiting.
+ */
+void ABossEnemy::SetBossCutscenePositions(FVector const Spawn, FVector const Intro, FVector const FinalBlow, FVector const Exit)
+{
+	BossSpawnLocation = Spawn;
+	BossIntroLocation = Intro;
+	BossFinalBlowLocation = FinalBlow;
+	BossExitLocation = Exit;
+	
+	CutsceneMovementDirection = (BossIntroLocation - BossSpawnLocation).GetSafeNormal();
+	SetActorLocation(BossSpawnLocation);
+	SetActorRotation(CutsceneMovementDirection.Rotation());
+	SkeletalMesh->SetVisibility(true);
+}
+
+/* Move boss towards the intro location. When close enough, stop boss tick and play intro roar. Set timer to exit intro
+ * cutscene.
+ * @param DeltaTime - float value representing time since last frame.
+ */
+void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
+{
+	RotateAndMove(CutsceneMovementDirection, DeltaTime);
+	
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossIntroLocation) < FMath::Square(6000.f))
+	{
+		SetActorTickEnabled(false);
+		UGameplayStatics::PlaySound2D(
+			GetWorld(),
+			BossIntroRoarSFX,
+			BossIntoRoarSFXVolume);
+		
+		GetWorldTimerManager().SetTimer(
+			VillageTimerHandle,
+			this,
+			&ABossEnemy::ExitIntroCutscene,
+			2,
+			false
+			);
+		
+	}
+}
+
+/* Turn actor tick on and set state to return to patrol route. Make force field visible and broadcast state.
+ */
+void ABossEnemy::ExitIntroCutscene()
+{
+	ForceField->SetVisibility(true);
+	SetActorTickEnabled(true);
+	CurrentState = EBossState::ReturningToPatrolRoute;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+}
+
+/* Clears the timer for the village destruction.
+ */
+void ABossEnemy::ClearDestroyVillageTimer()
+{
+	GetWorldTimerManager().ClearTimer(VillageTimerHandle);
+}
+
+/* Gets percentage of destroy village timer that has elapsed.
+ * @return float - float percent of elapsed time of destroy village timer.
+ */
+float ABossEnemy::GetDestroyVillageTimerProgress() const
+{
+	return GetWorldTimerManager().GetTimerElapsed(VillageTimerHandle) / TimeToDestroyVillage;
+}
+
+/* Remove the dead grunt from the grunt array if referenced in it. Get village to approach and change state to approach
+ * village if no grunts left in array.
+ * @param DeadGrunt - reference to grunt that was destroyed.
+ */
+void ABossEnemy::RemoveGruntFromArray(AGruntEnemy* DeadGrunt)
+{
+	if (GruntSummons.Contains(DeadGrunt))
+	{
+		GruntSummons.Remove(DeadGrunt);
+		
+		if (GruntSummons.IsEmpty())
+		{
+			StartApproachVillage();
+		}
+	}
+}
+
+/* Get village to approach and change state to approach village state. Broadcast the state change then start attacking
+ * the player.
+ */
+void ABossEnemy::StartApproachVillage()
+{
+	GetVillageLocation();
+	CurrentState = EBossState::ApproachVillage;
+	bOnRoute = false;
+	AttackPlayer();
+}
+
+/* Gets direction towards a location above a village then move and rotate towards it. Switch to hovering state if close
+ * enough.
+ * @param DeltaTime - time since last tick.
+ */
+void ABossEnemy::ApproachVillage(float const DeltaTime)
+{
+	FVector DirectionToVillage = VillageHoverLocation - GetActorLocation();
+
+	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(2000.f))
+	{
+		SwitchToHoveringState();
 		return;
 	}
 	
-	WaveManagerComponent->WaveCompleted(); // Complete the wave when defeated
-	Destroy(); // Destroy self
+	DirectionToVillage.Normalize();
+	RotateAndMove(DirectionToVillage, DeltaTime);
+}
+
+/* Rotates the boss so that it is facing the village. Disables tick after rotating.
+ * @param DeltaTime - time since last tick.
+ */
+void ABossEnemy::RotateThenHover(float const DeltaTime)
+{
+	SetActorRotation(FMath::RInterpTo(GetActorRotation(), RotationTowardsVillage, DeltaTime, .5f));
+	if (GetActorRotation().Equals(RotationTowardsVillage, .5f))
+	{
+		SetActorTickEnabled(false);
+	}
+}
+
+/* Call parent ReturnToRoute and change state when back on patrol route.
+ * @param DeltaTime - time since last frame.
+ */
+void ABossEnemy::ReturnToRoute(float const DeltaTime)
+{
+	Super::ReturnToRoute(DeltaTime);
+
+	if (bOnRoute)
+	{
+		CurrentState = EBossState::OnPatrolRoute;
+		SummonGruntEnemies();
+	}
+}
+
+/* Sets the location above the village to hover at. Determines if location is feasible through line check before
+ * setting. If no possible locations, try again after a second.
+ */
+void ABossEnemy::GetVillageLocation()
+{
+	FHitResult Hit;
+	FCollisionShape const MySphere = FCollisionShape::MakeSphere(5000.f);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+	CollisionParams.AddIgnoredActor(PlayerCharacter);
+	
+	TArray<AWeaponDropOff*> ValidWeaponDropOffs = WeaponDropOffs;
+	if (ValidWeaponDropOffs.IsEmpty()) { return; }
+	
+	while (true)
+	{
+		if (ValidWeaponDropOffs.IsEmpty()) { break; }
+		WeaponDropOff = ValidWeaponDropOffs[FMath::RandRange(0, ValidWeaponDropOffs.Num() - 1)];
+		ValidWeaponDropOffs.Remove(WeaponDropOff);
+		
+		VillageHoverLocation = WeaponDropOff->GetActorLocation() + BossLocationOffset;
+		GetWorld()->SweepSingleByChannel(
+			Hit,
+			GetActorLocation(),
+			VillageHoverLocation,
+			FQuat::Identity,
+			ECollisionChannel::ECC_WorldStatic,
+			MySphere,
+			CollisionParams
+		);
+		
+		if (!Hit.bBlockingHit) { return; }
+	}
+	
+	GetWorldTimerManager().SetTimer(
+		VillageTimerHandle,
+		this,
+		&ABossEnemy::GetVillageLocation,
+		1.f,
+		false);
+}
+
+/* Summons grunt enemies based on summon amount and makes them be only aggressive. Adds grunts to array to track.
+ */
+void ABossEnemy::SummonGruntEnemies()
+{
+	const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (!IsValid(GameModeLevel)) { return; }
+	
+	UEnemyManagerComponent* EnemyManagerComponent = GameModeLevel->GetEnemyManagementComponent();
+	if (!IsValid(EnemyManagerComponent)) { return; }
+	
+	for (int i = 0; i < GruntSummonAmount; i++)
+	{
+		float RouteDistance;
+		FTransform GruntSpawnTransform = EnemyManagerComponent->GetGruntSpawnTransform(PatrolRoute, RouteDistance);
+		AGruntEnemy* SummonedGrunt = EnemyManagerComponent->SpawnGruntEnemy(
+			GruntSpawnTransform,
+			RouteDistance,
+			PatrolRoute,
+			false);
+		
+		if (IsValid(SummonedGrunt))
+		{
+			SummonedGrunt->UseAggressiveTreeOnly();
+			GruntSummons.Add(SummonedGrunt);
+		}
+	}
 }
 
 // Generates unique lightning strike locations around the player
@@ -136,15 +513,17 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 	TArray<FVector> StrikeLocations;
 	FVector PossibleStrikeLocation;
 
-	int32 const NumberOfStrikes = FMath::RandRange(3, 5); // Number of lightning strikes
+	int32 const NumberOfStrikes = FMath::RandRange(MinLightningStrikes, MaxLightningStrikes); // Number of lightning strikes
 
 	// Get player location x and y
-	FVector const PlayerLocation = PlayerCharacter->GetActorLocation();
-	float const PlayerX = PlayerLocation.X; 
-	float const PlayerY = PlayerLocation.Y;
+	FVector const FuturePlayerLocation = PlayerCharacter->GetActorLocation() + (PlayerCharacter->GetVelocity() * LightningAttackStrikeDelay);
+	float const PlayerX = FuturePlayerLocation.X; 
+	float const PlayerY = FuturePlayerLocation.Y;
 
 	int32 Attempts = 0; // Counter to prevent infinite loops
 	int32 ConfirmedStrikes = 0; // Counter for strikes that will be doneS
+	
+	StrikeLocations.Add(FuturePlayerLocation); // First strike is always directly on player
 
 	// Generate unique strike locations
 	while (ConfirmedStrikes < NumberOfStrikes)
@@ -152,7 +531,7 @@ TArray<FVector> ABossEnemy::GenerateLightningStrikeLocations() const
 		bool bTooClose = false;
 		PossibleStrikeLocation.X = FMath::RandRange(PlayerX - LightningStrikePlayerRadius, PlayerX + LightningStrikePlayerRadius); // Random x within radius
 		PossibleStrikeLocation.Y = FMath::RandRange(PlayerY - LightningStrikePlayerRadius, PlayerY + LightningStrikePlayerRadius); // Random y within radius
-		PossibleStrikeLocation.Z = PlayerLocation.Z; // Set z to player z
+		PossibleStrikeLocation.Z = FuturePlayerLocation.Z; // Set z to player z
 
 		for (const FVector& ExistingStrikeLocation : StrikeLocations)
 		{
@@ -183,10 +562,13 @@ void ABossEnemy::TelegraphLightningStrikes()
 {
 	TArray<FVector> LightningStrikeLocations = GenerateLightningStrikeLocations(); // Get strike locations
 
+	USoundBase* RandomBossRoarSFX = BossRoarSFX[FMath::RandRange(0, BossRoarSFX.Num() - 1)];
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), RandomBossRoarSFX, GetActorLocation(), BossRoarSFXVolume);
+	
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
 		// Spawn lightning effect at strike location
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningTelegraphEffect,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
@@ -196,6 +578,8 @@ void ABossEnemy::TelegraphLightningStrikes()
 			true,
 			ENCPoolMethod::AutoRelease
 		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
 	}
 	
 	// Set timer to execute lightning strikes after delay
@@ -210,10 +594,7 @@ void ABossEnemy::TelegraphLightningStrikes()
 // Executes the lightning strikes at the specified locations
 void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocations)
 {
-	StrikesExecuted++; // Increment strike count
-
-	FHitResult HitResult; // Hit result for collision detection
-
+	TArray<FHitResult> HitResults; // Hit result for collision detection
 	FCollisionQueryParams CollisionParams; // Collision query parameters
 	CollisionParams.bTraceComplex = false; // Don't use complex collision
 	CollisionParams.bReturnPhysicalMaterial = false; // No need for physical material
@@ -221,19 +602,8 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 	// Spawn lightning effects at strike locations
 	for (const FVector& StrikeLocation : LightningStrikeLocations)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			LightningStrikeEffect,
-			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
-			FRotator::ZeroRotator,
-			FVector(1.f),
-			true,
-			true,
-			ENCPoolMethod::AutoRelease
-		);
-
-		bool bHit = GetWorld()->SweepSingleByChannel(
-			HitResult,
+		bool const bHit = GetWorld()->SweepMultiByChannel(
+			HitResults,
 			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
 			StrikeLocation * FVector(1.f, 1.f, 0.f), // End at ground level
 			FQuat::Identity,
@@ -241,18 +611,69 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			FCollisionShape::MakeSphere(LightningStrikeDamageRadius), // Small sphere for sweep
 			CollisionParams
 		);
-
-		// Apply damage if player is hit
+		
+		
+		TArray<FHitResult> HitResultss;
+		DrawDebugSphereTraceMulti(
+			GetWorld(),
+			StrikeLocation + FVector(0.f, 0.f, 50000.f),
+			StrikeLocation * FVector(1.f, 1.f, 0.f),
+			LightningStrikeDamageRadius,
+			EDrawDebugTrace::ForDuration,
+			false,
+			HitResultss,
+			FLinearColor::Red,
+			FLinearColor::Green,
+			3.f);
+		
+		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			LightningStrikeEffect,
+			StrikeLocation + FVector(0.f, 0.f, 50000.f), // Start above strike location
+			FRotator::ZeroRotator,
+			FVector(1.f),
+			true,
+			false,
+			ENCPoolMethod::AutoRelease
+		);
+		
+		LightningStrike->SetVariableFloat(FName("User.BeamWidth"), LightningStrikeDamageRadius);
+		
 		if (bHit)
 		{
-			UGameplayStatics::ApplyDamage(
-				PlayerCharacter,
-				LightningStrikeDamage,
-				nullptr,
-				this,
-				UDamageType::StaticClass()
-			);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), HitResults.Last().Location - FVector(.0f, .0f, LightningStrikeDamageRadius));
+			
+			for (const FHitResult& HitResult : HitResults)
+			{
+				UE_LOG(LogTemp, Log, TEXT("%s"), *HitResult.GetActor()->GetName());
+				if (HitResult.GetActor() == PlayerCharacter)
+				{
+					UGameplayStatics::ApplyDamage(
+						PlayerCharacter,
+						LightningStrikeDamage,
+						nullptr,
+						this,
+						UDamageType::StaticClass()
+					);
+					
+					break;
+				}
+			}
 		}
+		else
+		{
+			FVector const LightningEndLocation = FVector(StrikeLocation.X, StrikeLocation.Y, -50000.f);
+			LightningStrike->SetVariableVec3(FName("User.BeamEnd"), LightningEndLocation);
+		}
+		
+		LightningStrike->Activate(true);
+		UGameplayStatics::PlaySound2D(
+			GetWorld(),
+			LightningStrikeSFX,
+			LightningStrikeSFXVolume, 
+			1.f, 
+			0.f,
+			LightningStrikeSFXConcurrency);
 	}
 }
 

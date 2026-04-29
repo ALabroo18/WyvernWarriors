@@ -3,13 +3,15 @@
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Components/SplineComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameManagers/GameModeLevel.h"
-#include "GameManagers/Components/EnemyManagerComponent.h"
+#include "GameManagers/Components/EventBusComponent.h"
 #include "EnemyPatrolRoute.h"
 #include "GruntEnemyProjectile.h"
+#include "GruntEnemyController.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 
 
 // Creates components on enemy and sets attachment
@@ -17,7 +19,7 @@ AGruntEnemy::AGruntEnemy()
 {
 	// Create and configure attack projectile spawn point
 	AttackProjectileSpawn = CreateDefaultSubobject<UArrowComponent>(TEXT("AttackProjectileSpawn"));
-	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tounge1Socket"));
+	AttackProjectileSpawn->SetupAttachment(SkeletalMesh, TEXT("Tongue1Socket"));
 	
 	// Create and configure detection sphere
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
@@ -28,24 +30,76 @@ AGruntEnemy::AGruntEnemy()
 	HealthBarWidget->SetupAttachment(SkeletalMesh);
 }
 
-// Initializes enemy variables
+/* Sets health bar fill percent and on route variable of grunt enemy.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
-	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute); // Call base class initialization
+	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute);
+	
+	SetHealthBarPercent();
+	bOnRoute = bSpawnOnRoute;
+}
 
-	// Start moving along the route if spawned on it
-	if (bSpawnOnRoute)
+/* Sets up mesh dynamic material and gets references to player character and camera. Gets event bus component from game
+ * mode for broadcasting events on enemy death.
+ */
+void AGruntEnemy::BeginPlay()
+{
+	Super::BeginPlay();
+	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0));
+	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	
+	if (const AGameModeLevel* GameModeLevel = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld())); IsValid(GameModeLevel))
 	{
-		bOnRoute = true;
+		EventBus = GameModeLevel->GetEventBusComponent();
 	}
 }
 
-// Sets enemy variables when spawning 
-void AGruntEnemy::SetVariables()
+/*
+ */
+void AGruntEnemy::CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid) const
 {
-	Super::SetVariables();
-	SkeletalMesh->CreateDynamicMaterialInstance(0, SkeletalMesh->GetMaterial(0)); // Create dynamic material instance for visual effects
-	PlayerCameraManager = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0); // Get player camera manager
+	Super::CheckForMovementCollision(Direction, ActorsToAvoid);
+	
+	// Use large detection sphere for terrain and non-enemy actors (excluding player).
+}
+
+/* Toggles the grunt as being active or inactive by setting collisions and movement speed. Also toggles tick and
+ * visibility of grunt enemy. Tells controller to unpossess this grunt.
+ * @param bIsActive - whether the grunt enemy is being made active or inactive
+ */
+AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
+{
+	SetActorTickEnabled(bToggleActive);
+	SetActorHiddenInGame(!bToggleActive);
+	bIsActive = bToggleActive;
+	
+	if (bToggleActive)
+	{
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		
+		FloatingPawnMovement->MaxSpeed = MaxMovementSpeed;
+		return nullptr;
+	}
+
+	CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	FloatingPawnMovement->MaxSpeed = 0.f;
+	FloatingPawnMovement->StopMovementImmediately();
+	
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController)) { return nullptr; }
+	
+	GruntEnemyController->UnPossess();
+	return GruntEnemyController;
+
 }
 
 // Executes the attack on the player by spawning a projectile
@@ -103,68 +157,18 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 	}
 }
 
-// Destroys the grunt enemy actor after removing references
+/* Subtracts itself from patrol route count then toggles self to become inactive. Broadcasts grunt death event with
+ * this grunt.
+ */
 void AGruntEnemy::DestroySelfEnemy()
 {
-	// Get reference to the game mode
-	AGameModeLevel* GameMode = Cast<AGameModeLevel>(UGameplayStatics::GetGameMode(GetWorld()));
-	if (!IsValid(GameMode))
-	{
-		return;
-	}
-
-	// Get reference to the enemy management component
-	UEnemyManagerComponent* EnemyManagementComponent = GameMode->GetEnemyManagementComponent();
-	if (IsValid(EnemyManagementComponent))
-	{
-		EnemyManagementComponent->RemoveGruntEnemy(this); // Notify enemy management component of destruction
-	}
-
-	// Remove enemy from patrol route if valid
 	if (IsValid(PatrolRoute))
 	{
-		PatrolRoute->ModifyEnemiesOnRoute(false); // Remove enemy from patrol route
+		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
-	
-	// do something with egg
-	if (bIsEggThief)
-	{
-		// do something with egg
-	}
-	
-	Destroy(); // Destroy grunt enemy
-}
-
-/* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.
- * Check if grunt is on patrol route.
- * @param DeltaTime - float that is time since last tick
- */
-void AGruntEnemy::ReturnToRoute(float const DeltaTime)
-{
-	if (!IsValid(SplineComponent))
-	{
-		return;
-	}
-
-	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
-	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
-	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);
-
-	CheckOnPatrolRoute();
-}
-
-/* Checks if grunt is on patrol route and sets relevant status
- */
-void AGruntEnemy::CheckOnPatrolRoute()
-{	
-	if (FVector::DistSquared(GetActorLocation(), SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World)) < 2000 * 2000)
-	{
-		bOnRoute = true;
-	}
-	else
-	{
-		bOnRoute = false;
-	}
+	EventBus->OnGruntDeath.Broadcast(this);
+	IncreaseKillCombo();
+	ToggleGruntEnemy(false);
 }
 
 /* Gets direction towards player than rotates and moves said direction.
@@ -182,5 +186,26 @@ void AGruntEnemy::ChasePlayerCharacter(float const DeltaTime)
 void AGruntEnemy::FleePlayerCharacter(float const DeltaTime)
 {
 	FVector DirectionFromPlayer = (GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
+	DirectionFromPlayer.Y += RetreatDirectionOffset.X;
+	DirectionFromPlayer.Z += RetreatDirectionOffset.Y;
+	DirectionFromPlayer.Normalize();
 	RotateAndMove(DirectionFromPlayer, DeltaTime, NearbyEnemies);
+}
+
+/* Set the random offset for the flee direction.
+ */
+void AGruntEnemy::SetFleeOffset()
+{
+	RetreatDirectionOffset = FVector2D(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f));
+	RetreatDirectionOffset.Normalize();
+}
+
+/* Gets controller for this grunt and runs the aggressive behavior subtree on it.
+ */
+void AGruntEnemy::UseAggressiveTreeOnly() const
+{
+	AGruntEnemyController* GruntEnemyController = Cast<AGruntEnemyController>(GetController());
+	if (!IsValid(GruntEnemyController)) { return; }
+	
+	GruntEnemyController->RunAggressiveTree();
 }

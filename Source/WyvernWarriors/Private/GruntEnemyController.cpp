@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "GruntEnemyController.h"
 #include "GruntEnemy.h"
 #include "BehaviorTree/BehaviorTree.h"
@@ -31,6 +28,7 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 	const AGruntEnemy* ControlledGruntEnemy = Cast<AGruntEnemy>(GetPawn());
 	if(!IsValid(ControlledGruntEnemy))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess is invalid"));
 		return;
 	}
 
@@ -38,11 +36,19 @@ void AGruntEnemyController::OnPossess(APawn* InPawn)
 	GruntBlackboardComponent->InitializeBlackboard(*GruntBehaviorTree->BlackboardAsset);
 	if (!IsValid(GruntBlackboardComponent))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Grunt to possess has invalid blackboard"));
 		return;
 	}
 
 	GruntBlackboardComponent->SetValueAsBool(FName(TEXT("bOnPatrolRoute")), ControlledGruntEnemy->GetOnPatrolRoute()); // Set the controlled grunt enemy in the blackboard
 	GruntBlackboardComponent->SetValueAsObject(FName(TEXT("PlayerWyvern")), UGameplayStatics::GetPlayerPawn(GetWorld(), 0)); // Set the controlled grunt enemy in the blackboard
-
+	
 	RunBehaviorTree(GruntBehaviorTree); // Start the behavior tree for AI logic
+}
+
+/* Run the aggressive behavior subtree only
+ */
+void AGruntEnemyController::RunAggressiveTree()
+{
+	RunBehaviorTree(GruntAggressiveTree);
 }

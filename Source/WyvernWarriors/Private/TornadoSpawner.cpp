@@ -21,12 +21,12 @@ void ATornadoSpawner::Tick(float DeltaTime)
 
     if (IsValid(ActiveTornado))
     {
-        UE_LOG(LogTemp, Warning, TEXT("Spawner: Tornado already active, skipping"));
+        // UE_LOG(LogTemp, Warning, TEXT("Spawner: Tornado already active, skipping"));
         return;
     }
 
     CooldownAccumulator += DeltaTime;
-    UE_LOG(LogTemp, Warning, TEXT("Spawner: Cooldown %.1f / %.1f"), CooldownAccumulator, SpawnCooldown);
+    // UE_LOG(LogTemp, Warning, TEXT("Spawner: Cooldown %.1f / %.1f"), CooldownAccumulator, SpawnCooldown);
 
     if (CooldownAccumulator < SpawnCooldown) return;
 
@@ -38,7 +38,7 @@ void ATornadoSpawner::Tick(float DeltaTime)
     }
 
     const float Dist = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
-    UE_LOG(LogTemp, Warning, TEXT("Spawner: Player distance %.1f / %.1f radius"), Dist, SpawnProximityRadius);
+    // UE_LOG(LogTemp, Warning, TEXT("Spawner: Player distance %.1f / %.1f radius"), Dist, SpawnProximityRadius);
 
     if (Dist <= SpawnProximityRadius)
     {

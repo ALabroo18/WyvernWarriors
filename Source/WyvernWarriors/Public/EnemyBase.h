@@ -20,6 +20,9 @@ public:
 	// Sets default values for this pawn's properties
 	AEnemyBase();
 	
+	// Sets up values
+	virtual void BeginPlay() override;
+	
 	// Returns the distance along the patrol route
 	float GetDistanceAlongRoute() const { return DistanceAlongSpline; };
 	
@@ -27,9 +30,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	virtual void MoveAlongSpline(float DeltaTime);
 	
-	// Sets enemy variables when spawning 
-	UFUNCTION(BlueprintCallable, Category = "Initialization")
-	virtual void SetVariables();
+	// Sets grunt on patrol route if close enough
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	void CheckOnPatrolRoute();
+	
+	// Rotates and moves the enemy with the specified rotation, away from actors if provided
+	UFUNCTION(Category = "Movement")
+	virtual void ReturnToRoute(float const DeltaTime);
 	
 	// Initializes enemy variables before spawning
 	UFUNCTION(BlueprintCallable, Category = "Initialization")
@@ -50,11 +57,27 @@ public:
 	// Abstract method to destroy self
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	virtual void DestroySelfEnemy() {};
+	
+	// Get the bool for is grunt is active.
+	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	bool GetIsActive() const { return bIsActive; }
 
 protected:
 	// Rotates and moves the enemy with the specified rotation, away from actors if provided
 	UFUNCTION(Category = "Movement")	
 	void RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>());
+	
+	// Modifies direction if there is possible collisions during movement.
+	UFUNCTION(Category = "Movement")
+	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const;
+	
+	// Array of enemies that are within a certain radius
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
+	TArray<AActor*> NearbyEnemies;
+	
+	// Whether the enemy is currently moving along the patrol route
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bOnRoute = false;
 	
 	// Reference to the player character
 	UPROPERTY()
@@ -82,11 +105,11 @@ protected:
 	
 	// Patrol route for to get spline from
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (AllowPrivateAccess = true))
-	AEnemyPatrolRoute* PatrolRoute; 
+	AEnemyPatrolRoute* PatrolRoute = nullptr; 
 	
 	// Spline component for enemy movement
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement", meta = (AllowPrivateAccess = true))
-	USplineComponent* SplineComponent;
+	USplineComponent* SplineComponent = nullptr;
 	
 	// Max health of the enemy
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health", meta = (AllowPrivateAccess = true))
@@ -95,4 +118,8 @@ protected:
 	// Current health of the enemy
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Health", meta = (AllowPrivateAccess = true))
 	float CurrentHealth = 1.f;
+	
+	// Whether the grunt is active in world or not
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsActive = true;
 };

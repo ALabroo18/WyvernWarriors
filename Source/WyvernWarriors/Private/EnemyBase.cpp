@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "EnemyBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/SplineComponent.h"
@@ -28,14 +25,6 @@ AEnemyBase::AEnemyBase()
 	FloatingPawnMovement->UpdatedComponent = RootComponent;
 }
 
-// Sets enemy variables when spawning 
-void AEnemyBase::SetVariables()
-{
-	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
-	CurrentHealth = MaxHealth; // Set current health to maximum health
-	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed; // Set movement speed to max
-}
-
 // Moves the enemy along the spline path
 void AEnemyBase::MoveAlongSpline(float DeltaTime)
 {
@@ -57,12 +46,30 @@ void AEnemyBase::MoveAlongSpline(float DeltaTime)
 	}
 }
 
-// Initializes the enemy on the patrol route at a specific distance
+/* Checks if grunt is on patrol route and sets relevant status.
+ */
+void AEnemyBase::CheckOnPatrolRoute()
+{	
+	bOnRoute = FVector::DistSquared(GetActorLocation(), SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World)) < (2000 * 2000);
+}
+
+/* Assigns the patrol route, spline component, distance along spline, and current health of the enemy. Returns early
+ * if patrol route is invalid.
+ * @param InitialDistance - starting distance along patrol route
+ * @param Route - patrol route assigned to enemy
+ * @param bSpawnOnRoute - whether the enemy is spawning on the patrol route
+ */
 void AEnemyBase::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route, bool bSpawnOnRoute)
 {
-	PatrolRoute = Route; // Assign the patrol route
-	SplineComponent = PatrolRoute->GetSplineComponent(); // Get the spline component from the patrol route
-	DistanceAlongSpline = InitialDistance; // Set the initial distance along the route
+	if (!IsValid(Route))
+	{
+		return;
+	}
+	
+	PatrolRoute = Route;
+	SplineComponent = PatrolRoute->GetSplineComponent();
+	DistanceAlongSpline = InitialDistance;
+	CurrentHealth = MaxHealth;
 }
 
 // Modifies the enemy's health by a specified amount
@@ -77,15 +84,49 @@ void AEnemyBase::ModifyCurrentHealth(float const Amount)
 	}
 }
 
-/* Finds rotation based on input direction and direction away from input array of actors to avoid if there is any.
- * Keeps rotation from moving enemy beneath 0 then converts to quaternion to use for interpolation. Gets difference
- * between rotation quaternion and current quaternion to slow down speed when difference is large. Adds movement input
- * based on speed.
+/* Gets reference to player character
+ */
+void AEnemyBase::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0); // Get player character
+}
+
+/* Finds rotation based on input direction and possible collisions. Keeps rotation from moving enemy beneath 0 then
+ * converts to quaternion to use for interpolation. Gets difference between rotation quaternion and current quaternion
+ * to slow down speed when difference is large. Adds movement input based on speed.
  * @param Direction - FVector reference of direction that enemy should move
  * @param DeltaTime = float that is the amount of time since last tick
  * @param ActorsToAvoid - Array of actors that the enemy should move away from, empty by default
  */
 void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const TArray<AActor*>& ActorsToAvoid)
+{
+	CheckForMovementCollision(Direction, ActorsToAvoid);
+
+	FRotator Rotation = Direction.Rotation();
+	
+	if (GetActorLocation().Z < .0f && Rotation.Pitch < .0f)
+    {
+    	Rotation.Pitch *= -1.f;
+    }
+
+	FQuat const DesiredQuat = Rotation.Quaternion();
+	FQuat const NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); 
+	SetActorRotation(NextRotation);
+	
+	float const RotationDifference = GetActorQuat().AngularDistance(DesiredQuat);
+	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference));
+	
+	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true);
+}
+
+/* Checks if there are actors to avoid, and changes direction to move away from them if so. Averages the direction
+ * away from each actor if there are multiple.
+ * @param Direction - FVector reference of direction that enemy should move, modified if there are actors to avoid.
+ * @param ActorsToAvoid - Array of actors that the enemy should move away from.
+ */
+void AEnemyBase::CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid) const
 {
 	if (!ActorsToAvoid.IsEmpty())
 	{
@@ -99,20 +140,19 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
 		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
 		Direction = (Direction + DirectionAway).GetSafeNormal();
 	}
-	
-	FRotator Rotation = Direction.Rotation();
-	
-	if (GetActorLocation().Z < .0f && Rotation.Pitch < .0f)
-    {
-    	Rotation.Pitch *= -1.f;
-    }
+}
 
-	FQuat const DesiredQuat = Rotation.Quaternion();
-	FQuat  const NextRotation = FMath::QInterpTo(GetActorQuat(), DesiredQuat, DeltaTime, 1); 
-	SetActorRotation(NextRotation);
+/* Checks if patrol route spline is valid, then gets direction to spot on patrol route to rotate and move towards.
+ * Check if grunt is on patrol route.
+ * @param DeltaTime - float that is time since last tick
+ */
+void AEnemyBase::ReturnToRoute(float const DeltaTime)
+{
+	if (!IsValid(SplineComponent)) { return; }
 	
-	float const RotationDifference = GetActorQuat().AngularDistance(DesiredQuat);
-	FloatingPawnMovement->MaxSpeed = MaxMovementSpeed / (1 + (RotationDifference * RotationDifference));
-	
-	AddMovementInput(GetActorForwardVector(), FloatingPawnMovement->MaxSpeed, true);
+	FVector const FormerSpotOnRoute = SplineComponent->GetLocationAtDistanceAlongSpline(DistanceAlongSpline, ESplineCoordinateSpace::World); // Get location for spot on route
+	FVector DirectionToSpot = FormerSpotOnRoute - GetActorLocation();
+	RotateAndMove(DirectionToSpot, DeltaTime, NearbyEnemies);
+
+	CheckOnPatrolRoute();
 }

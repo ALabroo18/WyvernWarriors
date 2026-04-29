@@ -19,7 +19,7 @@ class WYVERNWARRIORS_API UWaveManagerComponent : public UActorComponent
 public:
 	// Sets the starting variables for wave management
 	UFUNCTION(BlueprintCallable, Category = "Wave")
-	void SetStartVariables(); 
+	void SetupWaveManager(); 
 	
 	// Completes the current wave
 	UFUNCTION(BlueprintCallable, Category = "Wave")
@@ -30,8 +30,12 @@ public:
 	void NewWave();
 	
 	// Recaptures outposts
-	UFUNCTION(BlueprintCallable, Category = "Wave")
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
 	void RecaptureOutposts(); 
+	
+	// Returns a random captured outpost
+	UFUNCTION(BlueprintCallable, Category = "Outpost")
+	AOutpost* GetRandomCapturedOutpost();
 	
 	// Resets the control meter to half its maximum value over time
 	UFUNCTION(BlueprintCallable, Category = "Control Meter")
@@ -58,12 +62,12 @@ private:
 	bool bIsFinalWave = false; 
 	
 	// Array of outposts in the level
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Wave", meta = (AllowPrivateAccess = true))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Outpost", meta = (AllowPrivateAccess = true))
 	TArray<AOutpost*> Outposts;
 	
 	// Amount to decrease control meter when resetting
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Control Meter", meta = (AllowPrivateAccess = true))
-	float ResetDecreaseAmount = -1.f; 
+	float ResetDecreaseAmount = -25.f; 
 	
 	// Time interval for control meter decrease when resetting
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Control Meter", meta = (AllowPrivateAccess = true))
@@ -71,11 +75,11 @@ private:
 	
 	// Maximum value of the control meter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Control Meter", meta = (AllowPrivateAccess = true))
-	float ControlMeterMax = 1500.f; 
+	float ControlMeterMax = 1000.f; 
 	
 	// Starting value of the control meter on new wave
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Control Meter", meta = (AllowPrivateAccess = true))
-	float ControlMeterStart = 750.f;
+	float ControlMeterStart = 500.f;
 	
 	// Whether the control meter is currently resetting
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Control Meter", meta = (AllowPrivateAccess = true))
