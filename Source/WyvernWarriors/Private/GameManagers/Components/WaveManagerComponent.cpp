@@ -46,10 +46,7 @@ void UWaveManagerComponent::NewWave()
 		{
 			if (IsValid(Outpost))
 			{
-				if (!Outpost->GetPlayerCapturedStatus())
-				{
-					Outpost->NewWave(true);
-				}
+				Outpost->NewWave(true);
 			}
 		}
 	}
