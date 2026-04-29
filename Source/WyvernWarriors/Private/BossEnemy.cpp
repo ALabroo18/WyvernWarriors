@@ -434,6 +434,7 @@ void ABossEnemy::ReturnToRoute(float const DeltaTime)
 	{
 		CurrentState = EBossState::OnPatrolRoute;
 		SummonGruntEnemies();
+		EventBus->OnBossStateChange.Broadcast(CurrentState);
 	}
 }
 
