@@ -135,7 +135,7 @@ void UCannonManagerComponent::SetCannonsBoss(ABossEnemy* BossEnemy)
  */
 void UCannonManagerComponent::SetCannonLoadable()
 {
-	if (Cannons.IsEmpty()) { UE_LOG(LogTemp, Log, TEXT("There are no cannons in the level.")); return; }
+	if (Cannons.IsEmpty()) { return; }
 	
 	ActiveCannon = GetCannonClosestToBoss();
 	ActiveCannon->SetLoadable();
@@ -156,7 +156,6 @@ void UCannonManagerComponent::SetCannonballsGrabbable()
 	{
 		Cannonball->SetPickUpSphereCollision(true);
 		Cannonball->ActivatePickUpUI();
-		UE_LOG(LogTemp, Log, TEXT("Setting %s cannonball active."), *Cannonball->GetName());
 	}
 }
 

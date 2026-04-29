@@ -645,7 +645,6 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			
 			for (const FHitResult& HitResult : HitResults)
 			{
-				UE_LOG(LogTemp, Log, TEXT("%s"), *HitResult.GetActor()->GetName());
 				if (HitResult.GetActor() == PlayerCharacter)
 				{
 					UGameplayStatics::ApplyDamage(
