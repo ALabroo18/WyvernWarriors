@@ -612,20 +612,6 @@ void ABossEnemy::ExecuteLightningStrikes(TArray<FVector> LightningStrikeLocation
 			CollisionParams
 		);
 		
-		
-		TArray<FHitResult> HitResultss;
-		DrawDebugSphereTraceMulti(
-			GetWorld(),
-			StrikeLocation + FVector(0.f, 0.f, 50000.f),
-			StrikeLocation * FVector(1.f, 1.f, 0.f),
-			LightningStrikeDamageRadius,
-			EDrawDebugTrace::ForDuration,
-			false,
-			HitResultss,
-			FLinearColor::Red,
-			FLinearColor::Green,
-			3.f);
-		
 		UNiagaraComponent* LightningStrike = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
 			LightningStrikeEffect,
