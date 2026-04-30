@@ -11,7 +11,6 @@
 #include "Outpost.h"
 #include "GameManagers/GameModeLevel.h"
 
-
 // Spawns a single grunt enemy at a random spawn point and patrol route distance, optionally on a specified patrol route
 FTransform UEnemyManagerComponent::GetGruntSpawnTransform(AEnemyPatrolRoute* SpecificPatrolRoute, float& DistanceAlongSpline)
 {
@@ -114,10 +113,9 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	if (!IsValid(Route)) { return nullptr; }
 	if (SpawnTransform.Equals(FTransform::Identity)) { return nullptr; }
 
-	AGruntEnemy* NewGruntEnemy = nullptr;
-	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy)) { return nullptr; }
+	AGruntEnemy* NewGruntEnemy = InactiveGruntEnemies[FMath::RandRange(0, InactiveGruntEnemies.Num() - 1)];
 	if (!IsValid(NewGruntEnemy)) { return nullptr; }
-	if (!NewGruntEnemy->IsA(AGruntEnemy::StaticClass())) { return nullptr; }
+	InactiveGruntEnemies.Remove(NewGruntEnemy);
 
 	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyRouteEnemyCount(true);
@@ -141,7 +139,7 @@ void UEnemyManagerComponent::SetupEnemyManager()
 	for (int i = 0; i < GruntSpawnCapacity; i++)
 	{
 		AGruntEnemy* NewGruntEnemy = GetWorld()->SpawnActor<AGruntEnemy>(GruntEnemyToSpawn);
-		InactiveGruntEnemies.Enqueue(NewGruntEnemy);
+		InactiveGruntEnemies.Add(NewGruntEnemy);
 		InactiveGruntEnemyControllers.Enqueue(NewGruntEnemy->ToggleGruntEnemy(false));
 	}
 	
@@ -274,7 +272,7 @@ void UEnemyManagerComponent::RemoveActiveGruntEnemy(AGruntEnemy* DeadGrunt)
 	}
 
 	ActiveGruntEnemies.Remove(DeadGrunt);
-	InactiveGruntEnemies.Enqueue(DeadGrunt);
+	InactiveGruntEnemies.Add(DeadGrunt);
 	InactiveGruntEnemyControllers.Enqueue(Cast<AGruntEnemyController>(DeadGrunt->GetController()));
 }
 
