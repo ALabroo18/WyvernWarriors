@@ -66,6 +66,9 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Health")
 	void IncreaseKillCombo() const;
 	
+	// Modifies direction if there is possible collisions during movement.
+	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const override;
+	
 private:
 	// Sets grunt variables on game start
 	virtual void BeginPlay() override;
@@ -98,9 +101,7 @@ private:
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	bool bSeenPlayer = false;
 	
-	// Modifies direction if there is possible collisions during movement.
-	virtual void CheckForMovementCollision(FVector& Direction, const TArray<AActor*>& ActorsToAvoid = TArray<AActor*>()) const override;
-	
+		
 	// Projectile used for attacking player
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack", meta = (AllowPrivateAccess = true))
 	TSubclassOf<AGruntEnemyProjectile> AttackProjectile;

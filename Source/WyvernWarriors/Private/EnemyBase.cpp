@@ -122,7 +122,7 @@ void AEnemyBase::RotateAndMove(FVector& Direction, const float DeltaTime, const 
 }
 
 /* Checks if there are actors to avoid, and changes direction to move away from them if so. Averages the direction
- * away from each actor if there are multiple.
+ * away from each actor if there are multiple. If something in path, turn direction upwards.
  * @param Direction - FVector reference of direction that enemy should move, modified if there are actors to avoid.
  * @param ActorsToAvoid - Array of actors that the enemy should move away from.
  */
@@ -139,6 +139,20 @@ void AEnemyBase::CheckForMovementCollision(FVector& Direction, const TArray<AAct
 		
 		FVector const DirectionAway = DirectionAwaySum / ActorsToAvoid.Num();
 		Direction = (Direction + DirectionAway).GetSafeNormal();
+	}
+	
+	FHitResult HitResult;
+	bool const bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		GetActorLocation(),
+		GetActorLocation() + (Direction * 6000.f),
+		ECC_Visibility
+	);
+	
+	if (bHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Hit something in path!"));
+		Direction = (Direction + FVector::UpVector).GetSafeNormal();
 	}
 }
 
