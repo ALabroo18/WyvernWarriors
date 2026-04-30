@@ -12,7 +12,6 @@
 #include "Blueprint/UserWidget.h"
 #include "NiagaraComponent.h"
 #include "BossAnimInstance.h"
-#include "KismetTraceUtils.h"
 
 class AEnemyPatrolRoute;
 

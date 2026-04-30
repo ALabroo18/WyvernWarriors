@@ -61,7 +61,7 @@ public:
 	void OnNewWave(bool const bIsFinalWave);
 	
 	// Adds a grunt into the inactive grunt queue
-	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Enqueue(GruntEnemy); }
+	void AddInactiveGruntEnemy(AGruntEnemy* GruntEnemy) { InactiveGruntEnemies.Add(GruntEnemy); }
 
 	// Adds a  controller into the inactive grunt controller queue
 	void AddInactiveGruntEnemyController(AGruntEnemyController* GruntEnemyController) { InactiveGruntEnemyControllers.Enqueue(GruntEnemyController); }
@@ -80,7 +80,8 @@ private:
 	float RuntimeGruntSpawnDelay;
 	
 	// Queue of inactive grunt enemies
-	TQueue<AGruntEnemy*> InactiveGruntEnemies;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
+	TArray<AGruntEnemy*> InactiveGruntEnemies;
 	
 	// Queue of inactive grunt enemy controllers
 	TQueue<AGruntEnemyController*> InactiveGruntEnemyControllers;

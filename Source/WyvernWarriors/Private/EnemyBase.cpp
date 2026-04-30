@@ -73,12 +73,12 @@ void AEnemyBase::InitializeEnemy(float InitialDistance, AEnemyPatrolRoute* Route
 }
 
 // Modifies the enemy's health by a specified amount
-void AEnemyBase::ModifyCurrentHealth(float const Amount)
+void AEnemyBase::ModifyCurrentHealth(float const Amount, bool const bIsEggThief)
 {
 	CurrentHealth = FMath::Clamp(CurrentHealth + Amount, 0.f, MaxHealth); // Adjust health and clamp between 0 and MaxHealth
 	
 	// Output if health was reduced to 0 or below
-	if (CurrentHealth <= 0)
+	if (CurrentHealth <= 0 && !bIsEggThief)
 	{
 		DestroySelfEnemy();
 	}
