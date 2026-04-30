@@ -106,7 +106,8 @@ void ABossEnemy::DestroyForceField()
 	bIsForceFieldActive = false;
 	ForceField->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ForceField->SetVisibility(false);
-	EventBus->OnForceFieldChange.Broadcast(false); 
+	EventBus->OnForceFieldChange.Broadcast(false);
+	BossAnimInstance->bIsDazed = true;
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -122,6 +123,7 @@ void ABossEnemy::DestroyForceField()
  */
 void ABossEnemy::DestroyForceFieldNiagara()
 {
+	if (bIsDestroyingVillage) { return; }
 	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
 	
 	UNiagaraFunctionLibrary::SpawnSystemAttached(
@@ -173,7 +175,8 @@ void ABossEnemy::RestoreForceFieldNiagara()
 			true
 		);
 
-	BossAnimInstance->ChangeDazedBlend(0.f);
+	BossAnimInstance->bIsHovering = false;
+	BossAnimInstance->bIsDazed = false;
 	
 	GetWorldTimerManager().SetTimer(
 		ForceFieldHandle,
@@ -189,21 +192,24 @@ void ABossEnemy::RestoreForceFieldNiagara()
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
-	CurrentState = EBossState::Defeated;
-	EventBus->OnBossStateChange.Broadcast(CurrentState);
-	
-	if (FString const LevelName = GetWorld()->GetName(); LevelName.Contains("Level3"))
+	FString const LevelName = GetWorld()->GetName();
+	if (char const LevelNumber = LevelName[LevelName.Len() - 1]; LevelNumber == '3')
 	{
-		UGameplayStatics::PlaySound2D(GetWorld(), ExplosionSFX, ExplosionSFXVolume);
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			ExplosionSystem,
-			GetActorLocation(),
-			GetActorRotation()
-			);
-		Destroy();
+		UE_LOG(LogTemp, Log, TEXT("%c"), LevelNumber)
+		BossAnimInstance->bIsDefeated = true;
+		
+		GetWorldTimerManager().SetTimer(
+		ForceFieldHandle,
+		this,
+		&ABossEnemy::ExplodeOnDeath,
+		4.5f,
+		false
+		);
+		return;
 	}
 	
+	CurrentState = EBossState::Defeated;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
 	SetActorTickEnabled(true);
 	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 }
@@ -263,8 +269,25 @@ void ABossEnemy::SwitchToHoveringState()
 	GetWorldTimerManager().SetTimer(
 		VillageTimerHandle,
 		this,
-		&ABossEnemy::DestroyVillage,
+		&ABossEnemy::DestroyVillageAttack,
 		TimeToDestroyVillage,
+		false);
+}
+
+/* Start attack animation and stop hovering. Stop lightning and set timer to actually destroy village.
+ */
+void ABossEnemy::DestroyVillageAttack()
+{
+	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
+	bIsDestroyingVillage = true;
+	BossAnimInstance->bIsAttacking = true;
+	BossAnimInstance->bIsHovering = false;
+	
+	GetWorldTimerManager().SetTimer(
+		VillageTimerHandle,
+		this,
+		&ABossEnemy::DestroyVillage,
+		6.0f,
 		false);
 }
 
@@ -273,6 +296,7 @@ void ABossEnemy::SwitchToHoveringState()
  */
 void ABossEnemy::DestroyVillage()
 {
+	BossAnimInstance->bIsAttacking = false;
 	FName const DestroyedTag = WeaponDropOff->Tags.Last();
 	EventBus->OnVillageDestroyed.Broadcast(DestroyedTag);
 	WeaponDropOffs.Remove(WeaponDropOff);
@@ -283,9 +307,26 @@ void ABossEnemy::DestroyVillage()
 		return;
 	}
 	
-	GetWorldTimerManager().ClearTimer(LightningStrikeHandle);
+	bIsDestroyingVillage = false;
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
+}
+
+/* Play boss death explosion niagara system and sound effect.
+ */
+void ABossEnemy::ExplodeOnDeath()
+{
+	CurrentState = EBossState::Defeated;
+	EventBus->OnBossStateChange.Broadcast(CurrentState);
+	
+	UGameplayStatics::PlaySound2D(GetWorld(), ExplosionSFX, ExplosionSFXVolume);
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		GetWorld(),
+		ExplosionSystem,
+		GetActorLocation(),
+		GetActorRotation()
+		);
+	Destroy();
 }
 
 /* Move boss towards final blow location. If close enough, stop ticking and enable force field to stop damage. Set
@@ -337,6 +378,7 @@ void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), BossIntroLocation) < FMath::Square(6000.f))
 	{
 		SetActorTickEnabled(false);
+		BossAnimInstance->bIsAttacking = true;
 		UGameplayStatics::PlaySound2D(
 			GetWorld(),
 			BossIntroRoarSFX,
@@ -346,10 +388,9 @@ void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
 			VillageTimerHandle,
 			this,
 			&ABossEnemy::ExitIntroCutscene,
-			2,
+			6,
 			false
 			);
-		
 	}
 }
 
@@ -357,6 +398,7 @@ void ABossEnemy::MoveIntoIntroCutscene(float const DeltaTime)
  */
 void ABossEnemy::ExitIntroCutscene()
 {
+	BossAnimInstance->bIsAttacking = false;
 	ForceField->SetVisibility(true);
 	SetActorTickEnabled(true);
 	CurrentState = EBossState::ReturningToPatrolRoute;
@@ -417,6 +459,7 @@ void ABossEnemy::ApproachVillage(float const DeltaTime)
 	if (UKismetMathLibrary::Vector_DistanceSquared(GetActorLocation(), VillageHoverLocation) < FMath::Square(2000.f))
 	{
 		SwitchToHoveringState();
+		BossAnimInstance->bIsHovering = true;
 		return;
 	}
 	

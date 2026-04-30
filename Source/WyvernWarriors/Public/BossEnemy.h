@@ -86,11 +86,11 @@ protected:
 	void PlayFinalBlowQTE();
 	
 	// Sets boss into defeated state
-	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
 	void FinalBlowQTESuccess();
 	
 	// Restore boss health and continue fighting the player
-	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
 	void FinalBlowQTEFailure();
 	
 private:
@@ -109,9 +109,17 @@ private:
 	UFUNCTION(Category = "Behavior")
 	void SwitchToHoveringState();
 	
+	// Plays Destroy village attack animation
+	UFUNCTION(Category = "Behavior")
+	void DestroyVillageAttack();
+	
 	// Destroys the targeted village
 	UFUNCTION(Category = "Behavior")
 	void DestroyVillage();
+	
+	// Destroys the targeted village
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsDestroyingVillage = false;
 	
 	// Handle for village related timers.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
@@ -120,6 +128,10 @@ private:
 	// Time for destroy village timer,
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	float TimeToDestroyVillage = 30.f;
+	
+	// Sets boss into defeated state
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
+	void ExplodeOnDeath();
 	
 	// QTE for final boss strike.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Final Blow", meta = (AllowPrivateAccess = true))
