@@ -69,15 +69,21 @@ public:
 	// Array of active grunt enemies 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
 	TArray<AGruntEnemy*> ActiveGruntEnemies;
+	
+	// Maximum number of enemies that can be spawned
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
+    int32 GruntSpawnCapacity = 30;
+    
+    // Time between grunt spawns during runtime
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
+    float RuntimeGruntSpawnDelay;
 
 private:
 	// Event bus used for delegates
 	UPROPERTY()
 	UEventBusComponent* EventBus;
 	
-	// Time between grunt spawns during runtime
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Functions", meta = (AllowPrivateAccess = true))
-	float RuntimeGruntSpawnDelay;
+	
 	
 	// Queue of inactive grunt enemies
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemies", meta = (AllowPrivateAccess = true))
@@ -98,9 +104,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Enemies", meta = (AllowPrivateAccess = true))
 	TSubclassOf<ABossEnemy> BossEnemyToSpawn;
 	
-	// Maximum number of enemies that can be spawned
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
-	int32 GruntSpawnCapacity = 30;
 	
 	// Minimum distance from player for spawning enemies
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy Spawning", meta = (AllowPrivateAccess = true))
