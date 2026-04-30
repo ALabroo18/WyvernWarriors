@@ -122,7 +122,7 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyRouteEnemyCount(true);
 	NewGruntEnemy->SetActorTransform(SpawnTransform);
-	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); // Crash in level 3
+	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute);
 	NewGruntEnemy->ToggleGruntEnemy(true); 
 
 	AGruntEnemyController* NewGruntEnemyController;
