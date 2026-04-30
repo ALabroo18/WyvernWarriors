@@ -114,12 +114,15 @@ AGruntEnemy* UEnemyManagerComponent::SpawnGruntEnemy(const FTransform& SpawnTran
 	if (!IsValid(Route)) { return nullptr; }
 	if (SpawnTransform.Equals(FTransform::Identity)) { return nullptr; }
 
-	AGruntEnemy* NewGruntEnemy;
+	AGruntEnemy* NewGruntEnemy = nullptr;
 	if (!InactiveGruntEnemies.Dequeue(NewGruntEnemy)) { return nullptr; }
 	if (!IsValid(NewGruntEnemy)) { UE_LOG(LogTemp, Log, TEXT("Invalid grunt in inactive array")); return nullptr; }
-	
+	if (!NewGruntEnemy->IsA(AGruntEnemy::StaticClass())) { UE_LOG(LogTemp, Log, TEXT("Non grunt in inactive array")); return nullptr; }
+
 	ActiveGruntEnemies.Add(NewGruntEnemy);
 	Route->ModifyRouteEnemyCount(true);
+	UE_LOG(LogTemp, Log, TEXT("Grunt to spawn: %s"), *NewGruntEnemy->GetName());
+	UE_LOG(LogTemp, Log, TEXT("Grunt to spawn: %s"), *NewGruntEnemy->GetName());
 	NewGruntEnemy->SetActorTransform(SpawnTransform);
 	NewGruntEnemy->InitializeEnemy(DistanceAlongSpline, Route, bSpawnOnRoute); // Crash in level 3
 	NewGruntEnemy->ToggleGruntEnemy(true); 
