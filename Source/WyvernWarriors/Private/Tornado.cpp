@@ -15,15 +15,17 @@ ATornado::ATornado()
     SplinePath->SetupAttachment(Root);
     SplinePath->SetAbsolute(true, true, true);
 
+    // Pull zone: ForceOuterRadius = 2x TornadoBodyRadius by design
     OuterZone = CreateDefaultSubobject<UCapsuleComponent>(TEXT("OuterZone"));
     OuterZone->SetupAttachment(Root);
     OuterZone->SetCapsuleSize(ForceOuterRadius, 1200.f);
     OuterZone->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
     OuterZone->SetGenerateOverlapEvents(true);
 
+    // Funnel body reference shape — sized to TornadoBodyRadius, no gameplay collision
     InnerZone = CreateDefaultSubobject<UCapsuleComponent>(TEXT("InnerZone"));
     InnerZone->SetupAttachment(Root);
-    InnerZone->SetCapsuleSize(ForceInnerRadius, 1200.f);
+    InnerZone->SetCapsuleSize(TornadoBodyRadius, 1200.f);
     InnerZone->SetCollisionProfileName(TEXT("NoCollision"));
 }
 
@@ -34,7 +36,6 @@ void ATornado::BeginPlay()
     OuterZone->OnComponentBeginOverlap.AddDynamic(this, &ATornado::OnOuterZoneBeginOverlap);
     OuterZone->OnComponentEndOverlap.AddDynamic(this, &ATornado::OnOuterZoneEndOverlap);
 
-    // Force activate any Niagara components on the actor
     TArray<UNiagaraComponent*> NiagaraComps;
     GetComponents<UNiagaraComponent>(NiagaraComps);
     for (UNiagaraComponent* NC : NiagaraComps)
@@ -55,6 +56,7 @@ void ATornado::BeginPlay()
 void ATornado::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     AffectedCharacters.Empty();
+    CharacterDamageAccumulated.Empty();
     Super::EndPlay(EndPlayReason);
 }
 
@@ -62,7 +64,6 @@ void ATornado::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    // bReachedEnd guards against forces firing on the same frame Destroy() is called
     if (bReachedEnd) return;
 
     MoveAlongSpline(DeltaTime);
@@ -101,33 +102,48 @@ void ATornado::ApplyForcesToCharacter(ACharacter* Character, float DeltaTime)
     UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement();
     if (!MoveComp) return;
 
-    // Flatten to horizontal plane so height difference does not skew directions
     FVector ToCharacter = Character->GetActorLocation() - GetActorLocation();
     ToCharacter.Z = 0.f;
     if (ToCharacter.Size() < 1.f) return;
 
-    const float NormalizedDist = GetNormalizedDistance(Character->GetActorLocation());
-    const float ForceFalloff = 1.f - NormalizedDist; // 1 at center, 0 at edge
+    const float t     = GetNormalizedDistance(Character->GetActorLocation()); // 0=centre, 1=outer edge
+    const float tEye  = ForceInnerRadius  / FMath::Max(ForceOuterRadius, 1.f);
+    const float tBody = TornadoBodyRadius / FMath::Max(ForceOuterRadius, 1.f);
 
-    // Inward direction toward tornado center
-    const FVector InwardDir = -ToCharacter.GetSafeNormal();
-    // Cross(Up, Inward) = clockwise tangent viewed from above
+    const FVector InwardDir     = -ToCharacter.GetSafeNormal();
+    // Counter-clockwise swirl viewed from above (flip cross order for CW)
     const FVector TangentialDir = FVector::CrossProduct(FVector::UpVector, InwardDir).GetSafeNormal();
 
-    // Swirl peaks at the eye wall (0.35 normalized), drops off inward and outward
-    const float SwirlScale = FMath::Clamp(
-        1.f - FMath::Abs(NormalizedDist - 0.35f) / 0.35f, 0.f, 1.f);
+    // Tangential (swirl): peaks at eye wall (tBody), strong through the outer band, very weak inside the eye
+    float TangentialScale;
+    if (t <= tBody)
+        TangentialScale = FMath::GetMappedRangeValueClamped(FVector2D(0.f, tBody), FVector2D(0.15f, 1.f), t);
+    else
+        TangentialScale = FMath::GetMappedRangeValueClamped(FVector2D(tBody, 1.f), FVector2D(1.f, 0.45f), t);
 
-    // Suction strongest near eye wall, zero at outer edge
-    const float SuctionScale = FMath::Clamp(1.f - NormalizedDist * 1.5f, 0.f, 1.f);
+    // Inward suction: zero inside the eye (centrifugal force counteracts it), ramps up through the
+    // wall and peaks at the outer edge — this is what draws the player into the funnel
+    const float InwardScale = t > tEye
+        ? FMath::Clamp((t - tEye) / (1.f - tEye), 0.f, 1.f)
+        : 0.f;
+
+    // Updraft: strongest at the eye and eye wall, tapers to zero at the outer pull boundary
+    float UpwardScale;
+    if (t <= tBody)
+        UpwardScale = FMath::GetMappedRangeValueClamped(FVector2D(0.f, tBody), FVector2D(1.f, 0.55f), t);
+    else
+        UpwardScale = FMath::GetMappedRangeValueClamped(FVector2D(tBody, 1.f), FVector2D(0.55f, 0.f), t);
 
     const FVector TotalForce =
-        TangentialDir * MaxTangentialForce * SwirlScale +
-        InwardDir * MaxInwardForce * SuctionScale +
-        FVector::UpVector * MaxUpwardForce * ForceFalloff;
+        TangentialDir   * MaxTangentialForce * TangentialScale +
+        InwardDir       * MaxInwardForce     * InwardScale     +
+        FVector::UpVector * MaxUpwardForce   * UpwardScale;
 
-    // Reduce gravity near center so upward force is not fighting full gravity
-    MoveComp->GravityScale = FMath::Lerp(1.f, 0.1f, ForceFalloff);
+    // Gravity suppressed inside the funnel body where the updraft dominates
+    MoveComp->GravityScale = t < tBody
+        ? FMath::GetMappedRangeValueClamped(FVector2D(0.f, tBody), FVector2D(0.05f, 0.5f), t)
+        : 1.f;
+
     MoveComp->AddInputVector(TotalForce * DeltaTime, true);
 }
 
@@ -135,27 +151,68 @@ void ATornado::ApplyDamageTick(float DeltaTime)
 {
     DamageAccumulator += DeltaTime;
     if (DamageAccumulator < DamageTickRate) return;
-    DamageAccumulator -= DamageTickRate; // subtract instead of zero to keep ticks regular
+    DamageAccumulator -= DamageTickRate;
+
+    TArray<ACharacter*> ToEject;
 
     for (ACharacter* Char : AffectedCharacters)
     {
         if (!IsValid(Char)) continue;
 
-        const float NormalizedDist = GetNormalizedDistance(Char->GetActorLocation());
-        const float Damage = FMath::Lerp(MaxDamagePerSecond, MinDamagePerSecond, NormalizedDist)
-            * DamageTickRate;
+        float& AccumDamage = CharacterDamageAccumulated.FindOrAdd(Char);
 
-        UGameplayStatics::ApplyDamage(Char, Damage, nullptr, this, UDamageType::StaticClass());
+        // Already hit the cap on a previous tick — eject now
+        if (AccumDamage >= MaxTotalDamagePerCharacter)
+        {
+            ToEject.Add(Char);
+            continue;
+        }
+
+        const float t = GetNormalizedDistance(Char->GetActorLocation());
+        const float RawDamage = FMath::Lerp(MaxDamagePerSecond, MinDamagePerSecond, t) * DamageTickRate;
+
+        // Clamp so cumulative damage never exceeds the cap — the player cannot be killed by the tornado
+        const float DamageToApply = FMath::Min(RawDamage, MaxTotalDamagePerCharacter - AccumDamage);
+        AccumDamage += DamageToApply;
+
+        UGameplayStatics::ApplyDamage(Char, DamageToApply, nullptr, this, UDamageType::StaticClass());
+
+        if (AccumDamage >= MaxTotalDamagePerCharacter)
+            ToEject.Add(Char);
     }
+
+    // Eject after the loop to avoid invalidating the iterator
+    for (ACharacter* Char : ToEject)
+        EjectCharacter(Char);
+}
+
+void ATornado::EjectCharacter(ACharacter* Character)
+{
+    FVector OutDir = Character->GetActorLocation() - GetActorLocation();
+    OutDir.Z = 0.f;
+
+    // Fallback if the character is somehow exactly at the centre
+    if (OutDir.SizeSquared() < 1.f)
+        OutDir = FVector(FMath::FRandRange(-1.f, 1.f), FMath::FRandRange(-1.f, 1.f), 0.f);
+
+    OutDir.Normalize();
+
+    Character->LaunchCharacter(
+        OutDir * EjectionOutwardSpeed + FVector::UpVector * EjectionUpwardSpeed,
+        true, true);
+
+    AffectedCharacters.Remove(Character);
+    CharacterDamageAccumulated.Remove(Character);
+
+    if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
+        MoveComp->GravityScale = 1.f;
 }
 
 float ATornado::GetNormalizedDistance(const FVector& Location) const
 {
     FVector ToChar = Location - GetActorLocation();
     ToChar.Z = 0.f;
-    return FMath::Clamp(
-        (ToChar.Size() - ForceInnerRadius) / (ForceOuterRadius - ForceInnerRadius),
-        0.f, 1.f);
+    return FMath::Clamp(ToChar.Size() / FMath::Max(ForceOuterRadius, 1.f), 0.f, 1.f);
 }
 
 void ATornado::OnOuterZoneBeginOverlap(
@@ -165,7 +222,11 @@ void ATornado::OnOuterZoneBeginOverlap(
 {
     ACharacter* Character = Cast<ACharacter>(OtherActor);
     if (Character && !AffectedCharacters.Contains(Character))
+    {
         AffectedCharacters.Add(Character);
+        // Re-entry starts the damage counter fresh
+        CharacterDamageAccumulated.Remove(Character);
+    }
 }
 
 void ATornado::OnOuterZoneEndOverlap(
@@ -176,8 +237,8 @@ void ATornado::OnOuterZoneEndOverlap(
     if (Character)
     {
         AffectedCharacters.Remove(Character);
+        CharacterDamageAccumulated.Remove(Character);
 
-        // Restore gravity on exit
         if (UCharacterMovementComponent* MoveComp = Character->GetCharacterMovement())
             MoveComp->GravityScale = 1.f;
     }
