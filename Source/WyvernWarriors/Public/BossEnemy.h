@@ -86,11 +86,11 @@ protected:
 	void PlayFinalBlowQTE();
 	
 	// Sets boss into defeated state
-	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
 	void FinalBlowQTESuccess();
 	
 	// Restore boss health and continue fighting the player
-	UFUNCTION(BlueprintCallable, Category = "Behavior")
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
 	void FinalBlowQTEFailure();
 	
 private:
@@ -109,9 +109,17 @@ private:
 	UFUNCTION(Category = "Behavior")
 	void SwitchToHoveringState();
 	
+	// Plays Destroy village attack animation
+	UFUNCTION(Category = "Behavior")
+	void DestroyVillageAttack();
+	
 	// Destroys the targeted village
 	UFUNCTION(Category = "Behavior")
 	void DestroyVillage();
+	
+	// Destroys the targeted village
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
+	bool bIsDestroyingVillage = false;
 	
 	// Handle for village related timers.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
@@ -121,6 +129,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	float TimeToDestroyVillage = 30.f;
 	
+	// Sets boss into defeated state
+	UFUNCTION(BlueprintCallable, Category = "Final Blow")
+	void ExplodeOnDeath();
+	
 	// QTE for final boss strike.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Final Blow", meta = (AllowPrivateAccess = true))
 	TSubclassOf<UUserWidget> FinalBlowQTE;
@@ -128,6 +140,14 @@ private:
 	// Location of boss to move to for final blow.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Final Blow", meta = (AllowPrivateAccess = true))
 	FVector BossFinalBlowLocation = FVector::ZeroVector;
+	
+	// Niagara system for boss explosion.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Final Blow", meta = (AllowPrivateAccess = true))
+	UNiagaraSystem* ExplosionSystem;
+	
+	// Size of boss explosion.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Final Blow", meta = (AllowPrivateAccess = true))
+	FVector ExplosionSystemScale = FVector(100.f, 100.f, 100.f);
 	
 	// Changes boss state to move to patrol route.
 	UFUNCTION(Category = "Final Blow")
@@ -165,8 +185,6 @@ private:
 	UFUNCTION(Category = "Custscenes")
 	void ExitIntroCutscene();
 	
-	
-	
 	// Animation instance of boss.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Behavior", meta = (AllowPrivateAccess = true))
 	UBossAnimInstance* BossAnimInstance;
@@ -198,6 +216,14 @@ private:
 	// Volume of boss intro roar sound effect.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
 	float BossIntoRoarSFXVolume = 1.f;
+	
+	// Sound effect for explosion.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* ExplosionSFX;
+	
+	// Volume of boss explosion sound effect.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float ExplosionSFXVolume = 1.f;
 	
 	// Change to approach village state
 	UFUNCTION(Category = "Movement")

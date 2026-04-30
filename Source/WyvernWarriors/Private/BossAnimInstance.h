@@ -13,6 +13,22 @@ public:
 	// Changes dazed blend alpha to target.
 	UFUNCTION(Category = "Animation")
 	void ChangeDazedBlend(float Target);
+	
+	// Bool for if boss is attacking.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = true))
+	bool bIsAttacking = false;
+	
+	// IBool for if boss is hovering.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = true))
+	bool bIsHovering = false;
+	
+	// Bool for if boss is dazed.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = true))
+	bool bIsDazed = false;
+	
+	// Bool for if boss is dead.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation", meta = (AllowPrivateAccess = true))
+	bool bIsDefeated = false;
 
 private:
 	// Changes dazed blend alpha to target.
