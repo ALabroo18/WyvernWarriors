@@ -184,14 +184,28 @@ void ABossEnemy::RestoreForceFieldNiagara()
 		);
 }
 
-/* Enable actor tick and get direction towards exit. Change state to defeated and broadcast change.
+/* Enable actor tick and get direction towards exit. Change state to defeated and broadcast change. If level 3,
+ * instead play explosion system and sound effect, then destroy self.
  */
 void ABossEnemy::FinalBlowQTESuccess()
 {
-	SetActorTickEnabled(true);
-	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 	CurrentState = EBossState::Defeated;
 	EventBus->OnBossStateChange.Broadcast(CurrentState);
+	
+	if (FString const LevelName = GetWorld()->GetName(); LevelName.Contains("Level3"))
+	{
+		UGameplayStatics::PlaySound2D(GetWorld(), ExplosionSFX, ExplosionSFXVolume);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(),
+			ExplosionSystem,
+			GetActorLocation(),
+			GetActorRotation()
+			);
+		Destroy();
+	}
+	
+	SetActorTickEnabled(true);
+	CutsceneMovementDirection = (BossExitLocation - GetActorLocation()).GetSafeNormal();
 }
 
 /* Set health to 10% of max and restore force field. Change state to return to route and broadcast change.
