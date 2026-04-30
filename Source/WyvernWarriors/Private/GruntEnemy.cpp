@@ -38,7 +38,7 @@ AGruntEnemy::AGruntEnemy()
 void AGruntEnemy::InitializeEnemy(float const InitialDistance, AEnemyPatrolRoute* Route, bool const bSpawnOnRoute)
 {
 	Super::InitializeEnemy(InitialDistance, Route, bSpawnOnRoute);
-	
+
 	SetHealthBarPercent();
 	bOnRoute = bSpawnOnRoute;
 }
@@ -102,19 +102,20 @@ AGruntEnemyController* AGruntEnemy::ToggleGruntEnemy(bool const bToggleActive)
 
 }
 
-// Executes the attack on the player by spawning a projectile
+/* Spawns projectile at spawn location and plays attack SFX.
+ */
 void AGruntEnemy::AttackPlayer()
 {
-	// Exit if player character is not valid
 	if (!IsValid(PlayerCharacter))
 	{
 		return;
 	}
-
-	// Spawn projectile with grunt as owner
+	
 	FActorSpawnParameters ProjectileSpawnParameters;
 	ProjectileSpawnParameters.Owner = this;
 	GetWorld()->SpawnActor<AGruntEnemyProjectile>(AttackProjectile, AttackProjectileSpawn->GetComponentLocation(), AttackProjectileSpawn->GetComponentRotation(), ProjectileSpawnParameters);
+	
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), AttackSFX, GetActorLocation(), AttackSFXVolume);
 }
 
 // Orients the health bar to face the player camera when within a certain distance

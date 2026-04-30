@@ -113,4 +113,19 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = true))
 	FVector2D RetreatDirectionOffset = FVector2D::ZeroVector;
 	
+	// Audio for the grunt attack
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	USoundBase* AttackSFX;
+	
+	// Volume for the grunt attack SFX
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float AttackSFXVolume = 1.f;
+	
+	// Audio for when grunt is damaged
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	TArray<USoundBase*> HurtSFX;
+	
+	// Volume for SFX for when grunt is damaged.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio", meta = (AllowPrivateAccess = true))
+	float HurtFXVolume = 1.f;
 };
