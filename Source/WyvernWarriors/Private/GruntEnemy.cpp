@@ -158,8 +158,8 @@ void AGruntEnemy::HighlightGruntEnemy(bool bHighlight)
 	}
 }
 
-/* Subtracts itself from patrol route count then toggles self to become inactive. Broadcasts grunt death event with
- * this grunt.
+/* Subtracts itself from patrol route count and increase kill combo. Toggle self inactive and broadcasts grunt death
+ * event with this grunt.
  */
 void AGruntEnemy::DestroySelfEnemy()
 {
@@ -167,9 +167,11 @@ void AGruntEnemy::DestroySelfEnemy()
 	{
 		PatrolRoute->ModifyRouteEnemyCount(false);
 	}
-	EventBus->OnGruntDeath.Broadcast(this);
+	
 	IncreaseKillCombo();
+	EventBus->OnGruntDeath.Broadcast(this);
 	ToggleGruntEnemy(false);
+	
 }
 
 /* Gets direction towards player than rotates and moves said direction.

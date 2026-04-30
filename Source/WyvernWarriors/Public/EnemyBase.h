@@ -44,7 +44,7 @@ public:
 	
 	// Modifies the enemy's health by a specified amount
 	UFUNCTION(BlueprintCallable, Category = "Health")
-	virtual void ModifyCurrentHealth(float Amount);
+	virtual void ModifyCurrentHealth(float Amount, bool bIsEggThief);
 	
 	// Set's the health bar fill
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Health")
